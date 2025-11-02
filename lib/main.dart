@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'services/api_service.dart';
 
 void main() {
@@ -113,13 +115,60 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
   bool _obscure = true;
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkLoginStatus();
+  }
+
+  Future<void> _checkLoginStatus() async {
+    final isLoggedIn = await ApiService.isLoggedIn();
+    if (isLoggedIn && mounted) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      );
+    }
+  }
 
   @override
   void dispose() {
     _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _login() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final username = _usernameController.text.trim();
+    final password = _passwordController.text;
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      await ApiService.login(username, password);
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = e.toString().replaceAll('Exception: ', '');
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   @override
@@ -129,94 +178,111 @@ class _LoginScreenState extends State<LoginScreen> {
         title: const Text('LOGIN'),
       ),
       body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 520),
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Positioned(
-                  top: 14,
-                  left: 14,
-                  right: 14,
-                  child: Container(
-                    height: 340,
-                    decoration: const BoxDecoration(
-                      color: Colors.black,
-                      borderRadius: BorderRadius.zero,
-                    ),
-                  ),
-                ),
-                Card(
+        child: SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 400),
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Form(
+                key: _formKey,
+                child: Card(
                   child: Padding(
                     padding: const EdgeInsets.all(24.0),
-        child: Column(
+                    child: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.sports_esports,
-                              color: Theme.of(context).colorScheme.primary,
-                              size: 28,
-                            ),
-                            const SizedBox(width: 12),
-            Text(
-                              'SIGN IN',
-                              style: GoogleFonts.pressStart2p(fontSize: 14),
-                            ),
-                          ],
+                        Text(
+                          'MRHY PXL STORE',
+                          style: GoogleFonts.pressStart2p(
+                            fontSize: 18,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          textAlign: TextAlign.center,
                         ),
-                        const SizedBox(height: 24),
-                        TextField(
+                        const SizedBox(height: 8),
+                        const Text(
+                          'INVENTORY MANAGEMENT',
+                          style: TextStyle(
+                            fontSize: 12,
+                            letterSpacing: 2,
+                            fontWeight: FontWeight.w300,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 32),
+                        TextFormField(
                           controller: _usernameController,
                           textInputAction: TextInputAction.next,
                           decoration: const InputDecoration(
                             labelText: 'USERNAME',
-                            hintText: 'player_one',
+                            hintText: 'Enter your username',
                             prefixIcon: Icon(Icons.person_outline),
+                            border: OutlineInputBorder(),
                           ),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please enter your username';
+                            }
+                            return null;
+                          },
+                          onFieldSubmitted: (_) => _login(),
                         ),
                         const SizedBox(height: 16),
-                        TextField(
+                        TextFormField(
                           controller: _passwordController,
                           obscureText: _obscure,
                           decoration: InputDecoration(
                             labelText: 'PASSWORD',
-                            hintText: '●●●●●●●●',
+                            hintText: 'Enter your password',
                             prefixIcon: const Icon(Icons.lock_outline),
+                            border: const OutlineInputBorder(),
                             suffixIcon: IconButton(
                               onPressed: () => setState(() => _obscure = !_obscure),
                               icon: Icon(_obscure ? Icons.visibility : Icons.visibility_off),
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 24),
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            final user = _usernameController.text.trim();
-                            final pass = _passwordController.text;
-                            if (user.isEmpty || pass.isEmpty) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('ENTER USERNAME AND PASSWORD')),
-                              );
-                              return;
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please enter your password';
                             }
-                            Navigator.of(context).pushReplacement(
-                              MaterialPageRoute(builder: (_) => const HomeScreen()),
-                            );
+                            if (value.length < 6) {
+                              return 'Password must be at least 6 characters';
+                            }
+                            return null;
                           },
-                          icon: const Icon(Icons.play_arrow),
-                          label: const Text('LOGIN'),
+                          onFieldSubmitted: (_) => _login(),
+                        ),
+                        if (_errorMessage != null) ...{
+                          const SizedBox(height: 16),
+                          Text(
+                            _errorMessage!,
+                            style: const TextStyle(color: Colors.red),
+                            textAlign: TextAlign.center,
+                          ),
+                        },
+                        const SizedBox(height: 24),
+                        SizedBox(
+                          height: 50,
+                          child: ElevatedButton(
+                            onPressed: _isLoading ? null : _login,
+                            child: _isLoading
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                    ),
+                                  )
+                                : const Text('SIGN IN'),
+                          ),
                         ),
                       ],
                     ),
                   ),
                 ),
-              ],
+              ),
             ),
           ),
         ),
@@ -234,6 +300,48 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _index = 0; // 0: Home, 1: Inventory, 2: POS, 3: Sales, 4: Expenses
+  String? _userName;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    try {
+      final profile = await ApiService.getProfile();
+      if (mounted) {
+        setState(() {
+          _userName = profile['username'];
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load user data: ${e.toString()}')),
+        );
+        _logout();
+      }
+    }
+  }
+
+  Future<void> _logout() async {
+    await ApiService.logout();
+    if (mounted) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+      );
+    }
+  }
+
+  void _onTabTapped(int index) {
+    setState(() {
+      _index = index;
+    });
+  }
 
   // Mock data for dashboard
   final double _todaySales = 1250.00;
@@ -290,81 +398,78 @@ class _HomeScreenState extends State<HomeScreen> {
     },
   ];
 
-  void _onTap(int i) {
-    setState(() => _index = i);
-    if (i != 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Coming soon')),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('DASHBOARD'),
+        title: Text(
+          _index == 1 ? 'INVENTORY' : 'DASHBOARD',
+          style: GoogleFonts.pressStart2p(fontSize: 14),
+        ),
         actions: [
           IconButton(
             tooltip: 'Sign out',
             icon: const Icon(Icons.logout),
-            onPressed: () {
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (_) => const LoginScreen()),
-                (route) => false,
-              );
-            },
+            onPressed: _logout,
           ),
         ],
       ),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 960),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 250),
-              switchInCurve: Curves.easeOutCubic,
-              switchOutCurve: Curves.easeInCubic,
-              transitionBuilder: (child, animation) {
-                final offsetAnim = Tween<Offset>(
-                  begin: const Offset(0.02, 0),
-                  end: Offset.zero,
-                ).animate(animation);
-                return FadeTransition(
-                  opacity: animation,
-                  child: SlideTransition(position: offsetAnim, child: child),
-                );
-              },
-              child: _buildTabBody(_index),
-            ),
+          constraints: const BoxConstraints(maxWidth: 1200),
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 250),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
+            transitionBuilder: (child, animation) {
+              final offsetAnim = Tween<Offset>(
+                begin: const Offset(0.02, 0),
+                end: Offset.zero,
+              ).animate(animation);
+              return FadeTransition(
+                opacity: animation,
+                child: SlideTransition(position: offsetAnim, child: child),
+              );
+            },
+            child: _buildTabBody(_index),
           ),
         ),
       ),
-      floatingActionButton: _index == 2
-          ? FloatingActionButton.extended(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('New Sale — Coming soon')),
-                );
-              },
-              icon: const Icon(Icons.add_shopping_cart),
-              label: const Text('NEW SALE'),
-            )
-          : null,
       bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: Theme.of(context).colorScheme.secondary,
-        selectedItemColor: Theme.of(context).colorScheme.primary,
-        unselectedItemColor: Colors.black87,
         currentIndex: _index,
-        onTap: _onTap,
+        onTap: _onTabTapped,
+        type: BottomNavigationBarType.fixed,
+        selectedItemColor: Theme.of(context).colorScheme.primary,
+        unselectedItemColor: Colors.grey,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.inventory_2), label: 'Inventory'),
-          BottomNavigationBarItem(icon: Icon(Icons.point_of_sale), label: 'POS'),
-          BottomNavigationBarItem(icon: Icon(Icons.sell), label: 'Sales'),
-          BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label: 'Expenses'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.dashboard_outlined),
+            label: 'Dashboard',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.inventory_2_outlined),
+            label: 'Inventory',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.point_of_sale_outlined),
+            label: 'POS',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.receipt_long_outlined),
+            label: 'Sales',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.account_balance_wallet_outlined),
+            label: 'Expenses',
+          ),
         ],
       ),
     );
@@ -810,13 +915,23 @@ class _ProductList extends StatefulWidget {
 
 class _ProductListState extends State<_ProductList> {
   List<dynamic> _products = [];
+  List<dynamic> _filteredProducts = [];
   bool _isLoading = true;
   String? _error;
+  final TextEditingController _searchController = TextEditingController();
+  String _filterStatus = 'all'; // all, in_stock, low_stock, out_of_stock
 
   @override
   void initState() {
     super.initState();
     _loadProducts();
+    _searchController.addListener(_filterProducts);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   // Expose method to parent
@@ -831,6 +946,7 @@ class _ProductListState extends State<_ProductList> {
       setState(() {
         _products = products;
         _isLoading = false;
+        _filterProducts();
       });
     } catch (e) {
       setState(() {
@@ -838,6 +954,38 @@ class _ProductListState extends State<_ProductList> {
         _isLoading = false;
       });
     }
+  }
+
+  void _filterProducts() {
+    final query = _searchController.text.toLowerCase();
+    
+    setState(() {
+      _filteredProducts = _products.where((product) {
+        final name = (product['name'] as String? ?? '').toLowerCase();
+        final matchesSearch = name.contains(query);
+        
+        if (!matchesSearch) return false;
+        
+        // Calculate total stock for status filter
+        final variations = (product['variations'] as List?) ?? [];
+        int totalStock = 0;
+        for (var v in variations) {
+          totalStock += (v['quantity'] as num?)?.toInt() ?? 0;
+        }
+        
+        // Apply status filter
+        switch (_filterStatus) {
+          case 'out_of_stock':
+            return totalStock == 0;
+          case 'low_stock':
+            return totalStock > 0 && totalStock <= 5;
+          case 'in_stock':
+            return totalStock > 5;
+          default:
+            return true;
+        }
+      }).toList();
+    });
   }
 
   @override
@@ -893,21 +1041,141 @@ class _ProductListState extends State<_ProductList> {
       );
     }
 
-    return RefreshIndicator(
-      onRefresh: _loadProducts,
-      child: ListView.separated(
-        padding: const EdgeInsets.all(16),
-        itemCount: _products.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 12),
-        itemBuilder: (context, index) {
-          final product = _products[index];
-          final variations = (product['variations'] as List?) ?? [];
-          return _ProductCard(
-            product: product,
-            variations: variations,
-            onUpdated: _loadProducts,
-          );
-        },
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'Search products...',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _searchController.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            _searchController.clear();
+                          },
+                        )
+                      : null,
+                  border: const OutlineInputBorder(),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                ),
+              ),
+              const SizedBox(height: 12),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _FilterChip(
+                      label: 'All (${_products.length})',
+                      isSelected: _filterStatus == 'all',
+                      onTap: () {
+                        setState(() => _filterStatus = 'all');
+                        _filterProducts();
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    _FilterChip(
+                      label: 'In Stock',
+                      isSelected: _filterStatus == 'in_stock',
+                      onTap: () {
+                        setState(() => _filterStatus = 'in_stock');
+                        _filterProducts();
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    _FilterChip(
+                      label: 'Low Stock',
+                      isSelected: _filterStatus == 'low_stock',
+                      color: const Color(0xFFFF9800),
+                      onTap: () {
+                        setState(() => _filterStatus = 'low_stock');
+                        _filterProducts();
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    _FilterChip(
+                      label: 'Out of Stock',
+                      isSelected: _filterStatus == 'out_of_stock',
+                      color: const Color(0xFFF44336),
+                      onTap: () {
+                        setState(() => _filterStatus = 'out_of_stock');
+                        _filterProducts();
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: _filteredProducts.isEmpty
+              ? Center(
+                  child: Text(
+                    'NO PRODUCTS FOUND',
+                    style: GoogleFonts.pressStart2p(fontSize: 12, color: Colors.black54),
+                  ),
+                )
+              : RefreshIndicator(
+                  onRefresh: _loadProducts,
+                  child: ListView.separated(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    itemCount: _filteredProducts.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      final product = _filteredProducts[index];
+                      final variations = (product['variations'] as List?) ?? [];
+                      return _ProductCard(
+                        product: product,
+                        variations: variations,
+                        onUpdated: _loadProducts,
+                      );
+                    },
+                  ),
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+class _FilterChip extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final Color? color;
+  final VoidCallback onTap;
+
+  const _FilterChip({
+    required this.label,
+    required this.isSelected,
+    this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? (color ?? Theme.of(context).colorScheme.primary) : Colors.white,
+          border: Border.all(
+            width: 2,
+            color: isSelected ? (color ?? Theme.of(context).colorScheme.primary) : Colors.grey,
+          ),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.pressStart2p(
+            fontSize: 9,
+            color: isSelected ? Colors.white : Colors.black87,
+          ),
+        ),
       ),
     );
   }
@@ -924,11 +1192,33 @@ class _ProductCard extends StatelessWidget {
     required this.onUpdated,
   });
 
+  double? _parseDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value);
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final name = product['name'] as String? ?? 'Unknown';
-    final cost = (product['cost'] as num?)?.toDouble() ?? 0.0;
-    final price = (product['price'] as num?)?.toDouble();
+    final cost = _parseDouble(product['cost']) ?? 0.0;
+    final price = _parseDouble(product['price']);
+    final id = product['id'] as int;
+    
+    // Calculate total stock and profit margin
+    int totalStock = 0;
+    for (var v in variations) {
+      totalStock += (v['quantity'] as num?)?.toInt() ?? 0;
+    }
+    
+    final profitMargin = (price != null && cost > 0) 
+        ? ((price - cost) / cost) * 100 
+        : null;
+    
+    // Determine stock status
+    final bool isOutOfStock = totalStock == 0;
+    final bool isLowStock = totalStock > 0 && totalStock <= 5;
 
     return Stack(
       children: [
@@ -942,82 +1232,160 @@ class _ProductCard extends StatelessWidget {
         Card(
           child: Padding(
             padding: const EdgeInsets.all(12.0),
-            child: Row(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  height: 56,
-                  width: 56,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE0E0E0),
-                    border: Border.all(width: 3, color: Colors.black),
-                  ),
-                  child: product['photo_url'] != null
-                      ? Image.network(
-                          product['photo_url'] as String,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => const Icon(Icons.image, size: 20, color: Colors.black54),
-                        )
-                      : const Icon(Icons.image, size: 20, color: Colors.black54),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        name,
-                        style: GoogleFonts.pressStart2p(fontSize: 11),
-                      ),
-                      const SizedBox(height: 6),
-                      if (variations.isEmpty)
-                        Text(
-                          'No variations',
-                          style: GoogleFonts.pressStart2p(fontSize: 9, color: Colors.black54),
-                        )
-                      else
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 6,
-                          children: variations.map<Widget>((v) {
-                            final color = v['color']?.toString() ?? '';
-                            final size = v['size']?.toString() ?? '';
-                            final qty = (v['quantity'] as num?)?.toInt() ?? 0;
-                            final chipBg = qty == 0 ? const Color(0xFFFFE1E1) : Colors.white;
-                            return Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: chipBg,
-                                border: Border.all(width: 3, color: Colors.black),
-                              ),
-                              child: Text(
-                                '$size / $color • $qty',
-                                style: GoogleFonts.pressStart2p(fontSize: 9),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (price != null)
-                      Text(
-                        _currency(price),
-                        style: GoogleFonts.pressStart2p(fontSize: 11),
-                      )
-                    else
-                      Text(
-                        'No price',
-                        style: GoogleFonts.pressStart2p(fontSize: 9, color: Colors.black54),
+                    Container(
+                      height: 56,
+                      width: 56,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE0E0E0),
+                        border: Border.all(width: 3, color: Colors.black),
                       ),
-                    const SizedBox(height: 4),
+                      child: product['photo_url'] != null
+                          ? Image.network(
+                              product['photo_url'] as String,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => const Icon(Icons.image, size: 20, color: Colors.black54),
+                            )
+                          : const Icon(Icons.image, size: 20, color: Colors.black54),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  name,
+                                  style: GoogleFonts.pressStart2p(fontSize: 11),
+                                ),
+                              ),
+                              if (isOutOfStock)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF44336),
+                                    border: Border.all(width: 2, color: Colors.black),
+                                  ),
+                                  child: Text(
+                                    'OUT',
+                                    style: GoogleFonts.pressStart2p(fontSize: 8, color: Colors.white),
+                                  ),
+                                )
+                              else if (isLowStock)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFF9800),
+                                    border: Border.all(width: 2, color: Colors.black),
+                                  ),
+                                  child: Text(
+                                    'LOW',
+                                    style: GoogleFonts.pressStart2p(fontSize: 8, color: Colors.white),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          if (variations.isEmpty)
+                            Text(
+                              'No variations',
+                              style: GoogleFonts.pressStart2p(fontSize: 9, color: Colors.black54),
+                            )
+                          else
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 6,
+                              children: variations.map<Widget>((v) {
+                                final color = v['color']?.toString() ?? '';
+                                final size = v['size']?.toString() ?? '';
+                                final qty = (v['quantity'] as num?)?.toInt() ?? 0;
+                                final chipBg = qty == 0 ? const Color(0xFFFFE1E1) : Colors.white;
+                                return Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: chipBg,
+                                    border: Border.all(width: 3, color: Colors.black),
+                                  ),
+                                  child: Text(
+                                    '$size / $color • $qty',
+                                    style: GoogleFonts.pressStart2p(fontSize: 9),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        if (price != null)
+                          Text(
+                            _currency(price),
+                            style: GoogleFonts.pressStart2p(fontSize: 11),
+                          )
+                        else
+                          Text(
+                            'No price',
+                            style: GoogleFonts.pressStart2p(fontSize: 9, color: Colors.black54),
+                          ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Cost ${_currency(cost)}',
+                          style: GoogleFonts.pressStart2p(fontSize: 9, color: Colors.black87),
+                        ),
+                        if (profitMargin != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            '${profitMargin.toStringAsFixed(0)}% profit',
+                            style: GoogleFonts.pressStart2p(
+                              fontSize: 8,
+                              color: profitMargin > 0 ? const Color(0xFF4CAF50) : const Color(0xFFF44336),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
                     Text(
-                      'Cost ${_currency(cost)}',
+                      'Total Stock: $totalStock',
                       style: GoogleFonts.pressStart2p(fontSize: 9, color: Colors.black87),
+                    ),
+                    const Spacer(),
+                    OutlinedButton.icon(
+                      onPressed: () => _showEditDialog(context, product, variations),
+                      icon: const Icon(Icons.edit, size: 16),
+                      label: const Text('EDIT'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    OutlinedButton.icon(
+                      onPressed: () => _showDeleteDialog(context, id, name),
+                      icon: const Icon(Icons.delete, size: 16, color: Colors.red),
+                      label: const Text('DELETE', style: TextStyle(color: Colors.red)),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        side: const BorderSide(color: Colors.red),
+                      ),
                     ),
                   ],
                 ),
@@ -1027,6 +1395,55 @@ class _ProductCard extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  void _showEditDialog(BuildContext context, Map<String, dynamic> product, List<dynamic> variations) {
+    // TODO: Implement edit dialog
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Edit functionality coming next!')),
+    );
+  }
+
+  void _showDeleteDialog(BuildContext context, int id, String name) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('DELETE PRODUCT?', style: GoogleFonts.pressStart2p(fontSize: 12)),
+        content: Text(
+          'Are you sure you want to delete "$name"? This action cannot be undone.',
+          style: GoogleFonts.pressStart2p(fontSize: 10),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('CANCEL'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('DELETE'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      try {
+        await ApiService.deleteProduct(id);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('PRODUCT DELETED SUCCESSFULLY!')),
+          );
+          onUpdated();
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('ERROR: ${e.toString()}')),
+          );
+        }
+      }
+    }
   }
 }
 
@@ -1042,16 +1459,34 @@ class _InventoryForm extends StatefulWidget {
 class _InventoryFormState extends State<_InventoryForm> {
   final TextEditingController _nameCtrl = TextEditingController();
   final TextEditingController _costCtrl = TextEditingController();
+  final TextEditingController _priceCtrl = TextEditingController();
   final List<_VariationRowData> _variations = [_VariationRowData()];
+  double? _profitMargin;
 
   @override
   void dispose() {
     _nameCtrl.dispose();
     _costCtrl.dispose();
+    _priceCtrl.dispose();
     for (final v in _variations) {
       v.dispose();
     }
     super.dispose();
+  }
+
+  void _calculateProfitMargin() {
+    final cost = double.tryParse(_costCtrl.text.trim());
+    final price = double.tryParse(_priceCtrl.text.trim());
+    
+    if (cost != null && price != null && cost > 0) {
+      setState(() {
+        _profitMargin = ((price - cost) / cost) * 100;
+      });
+    } else {
+      setState(() {
+        _profitMargin = null;
+      });
+    }
   }
 
   void _addRow() => setState(() => _variations.add(_VariationRowData()));
@@ -1070,6 +1505,8 @@ class _InventoryFormState extends State<_InventoryForm> {
 
     final name = _nameCtrl.text.trim();
     final cost = double.tryParse(_costCtrl.text.trim());
+    final price = double.tryParse(_priceCtrl.text.trim());
+    
     if (name.isEmpty || cost == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('ENTER NAME AND COST')),
@@ -1097,18 +1534,21 @@ class _InventoryFormState extends State<_InventoryForm> {
       final response = await ApiService.createProduct(
         name: name,
         cost: cost,
+        price: price,
         variations: variations,
       );
 
       // Clear form on success
       _nameCtrl.clear();
       _costCtrl.clear();
+      _priceCtrl.clear();
       while (_variations.length > 1) {
         _variations.removeLast().dispose();
       }
       _variations[0].colorCtrl.clear();
       _variations[0].sizeCtrl.clear();
       _variations[0].qtyCtrl.clear();
+      setState(() => _profitMargin = null);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1174,9 +1614,56 @@ class _InventoryFormState extends State<_InventoryForm> {
                 const SizedBox(height: 12),
                 TextField(
                   controller: _costCtrl,
-                  decoration: const InputDecoration(labelText: 'PRODUCT COST', hintText: 'e.g. 10.00', prefixText: '\u000024 '),
+                  decoration: const InputDecoration(
+                    labelText: 'COST (What you paid)',
+                    hintText: 'e.g. 10.00',
+                    prefixText: '\$ ',
+                  ),
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  textInputAction: TextInputAction.next,
+                  onChanged: (_) => _calculateProfitMargin(),
                 ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _priceCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'SELLING PRICE (What customers pay)',
+                    hintText: 'e.g. 25.00',
+                    prefixText: '\$ ',
+                  ),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  textInputAction: TextInputAction.next,
+                  onChanged: (_) => _calculateProfitMargin(),
+                ),
+                if (_profitMargin != null) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: _profitMargin! > 0 ? const Color(0xFFE8F5E9) : const Color(0xFFFFEBEE),
+                      border: Border.all(
+                        width: 2,
+                        color: _profitMargin! > 0 ? const Color(0xFF4CAF50) : const Color(0xFFF44336),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'PROFIT MARGIN:',
+                          style: GoogleFonts.pressStart2p(fontSize: 10),
+                        ),
+                        Text(
+                          '${_profitMargin!.toStringAsFixed(1)}%',
+                          style: GoogleFonts.pressStart2p(
+                            fontSize: 12,
+                            color: _profitMargin! > 0 ? const Color(0xFF4CAF50) : const Color(0xFFF44336),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -1253,11 +1740,13 @@ class _InventoryFormState extends State<_InventoryForm> {
                 onPressed: () {
                   _nameCtrl.clear();
                   _costCtrl.clear();
+                  _priceCtrl.clear();
                   for (final v in _variations) {
                     v.colorCtrl.clear();
                     v.sizeCtrl.clear();
                     v.qtyCtrl.clear();
                   }
+                  setState(() => _profitMargin = null);
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Cleared')),
                   );
