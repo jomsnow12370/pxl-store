@@ -198,6 +198,86 @@ class ApiService {
     }
   }
 
+  // Update variation quantity (reduce stock after sale)
+  static Future<Map<String, dynamic>> updateVariationQuantity({
+    required int productId,
+    required int variationId,
+    required int newQuantity,
+  }) async {
+    try {
+      await init();
+      final response = await http.put(
+        Uri.parse('${getBaseUrl()}/products/$productId/variations/$variationId'),
+        headers: _headers,
+        body: jsonEncode({
+          'quantity': newQuantity,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['message'] ?? 'Failed to update variation quantity');
+      }
+    } catch (e) {
+      throw Exception('Network error: $e');
+    }
+  }
+
+  // Create a sale/transaction record
+  static Future<Map<String, dynamic>> createSale({
+    required double total,
+    required String paymentMethod,
+    required double cashReceived,
+    required double change,
+    required List<Map<String, dynamic>> items,
+  }) async {
+    try {
+      await init();
+      final response = await http.post(
+        Uri.parse('${getBaseUrl()}/sales'),
+        headers: _headers,
+        body: jsonEncode({
+          'total': total,
+          'payment_method': paymentMethod,
+          'cash_received': cashReceived,
+          'change': change,
+          'items': items,
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        return jsonDecode(response.body);
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['message'] ?? 'Failed to create sale');
+      }
+    } catch (e) {
+      throw Exception('Network error: $e');
+    }
+  }
+
+  // Get all sales
+  static Future<List<dynamic>> getSales() async {
+    try {
+      await init();
+      final response = await http.get(
+        Uri.parse('${getBaseUrl()}/sales'),
+        headers: _headers,
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['data'] as List;
+      } else {
+        throw Exception('Failed to fetch sales');
+      }
+    } catch (e) {
+      throw Exception('Network error: $e');
+    }
+  }
+
   // Upload product photo from File (mobile/desktop)
   static Future<Map<String, dynamic>> uploadPhoto(File imageFile) async {
     try {

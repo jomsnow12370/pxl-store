@@ -510,7 +510,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildTabBody(int index) {
     switch (index) {
       case 0:
-        return const _ComingSoon(key: ValueKey('home'), label: 'HOME');
+        return const _DashboardScreen(key: ValueKey('dashboard-screen'));
       case 1:
         return _InventoryScreen(key: const ValueKey('inventory-screen'));
       case 2:
@@ -585,6 +585,925 @@ class _DashboardCard extends StatelessWidget {
                 ],
               ),
             ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DashboardScreen extends StatefulWidget {
+  const _DashboardScreen({super.key});
+
+  @override
+  State<_DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<_DashboardScreen> {
+  bool _isLoading = true;
+  String? _error;
+  
+  // Analytics data
+  double _todaySales = 0.0;
+  int _todayTransactions = 0;
+  double _yesterdaySales = 0.0;
+  double _totalRevenue = 0.0;
+  double _potentialGross = 0.0;
+  int _totalItems = 0;
+  int _lowStockItems = 0;
+  int _outOfStockItems = 0;
+  List<Map<String, dynamic>> _topSellingItems = [];
+  List<Map<String, dynamic>> _recentSales = [];
+  List<double> _weeklySales = [0, 0, 0, 0, 0, 0, 0]; // Last 7 days
+  double _profitMargin = 0.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDashboardData();
+  }
+
+  Future<void> _loadDashboardData() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+
+      // Load products for inventory stats
+      final products = await ApiService.getProducts();
+      
+      // Calculate inventory stats
+      int totalStockUnits = 0;
+      int lowStock = 0;
+      int outOfStock = 0;
+      double potentialGross = 0.0;
+      
+      for (final product in products) {
+        final price = double.tryParse(product['price']?.toString() ?? '0') ?? 0.0;
+        final variations = product['variations'] as List? ?? [];
+        for (final variation in variations) {
+          final qty = (variation['quantity'] as num?)?.toInt() ?? 0;
+          
+          // Count total units in stock
+          totalStockUnits += qty;
+          
+          // Calculate potential gross (price × quantity for all items)
+          potentialGross += (price * qty);
+          
+          if (qty == 0) {
+            outOfStock++;
+          } else if (qty <= 5) {
+            lowStock++;
+          }
+        }
+      }
+
+      // Load sales data
+      final sales = await ApiService.getSales();
+      
+      // Calculate sales stats
+      double todaySales = 0.0;
+      int todayTransactions = 0;
+      double yesterdaySales = 0.0;
+      double totalRevenue = 0.0;
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final yesterday = today.subtract(const Duration(days: 1));
+      
+      // Initialize weekly sales (last 7 days)
+      List<double> weeklySales = [0, 0, 0, 0, 0, 0, 0];
+      
+      for (final sale in sales) {
+        final total = double.tryParse(sale['total']?.toString() ?? '0') ?? 0.0;
+        totalRevenue += total;
+        
+        // Check if sale is from today
+        final createdAt = DateTime.parse(sale['created_at']);
+        final saleDate = DateTime(createdAt.year, createdAt.month, createdAt.day);
+        
+        if (saleDate == today) {
+          todaySales += total;
+          todayTransactions++;
+        } else if (saleDate == yesterday) {
+          yesterdaySales += total;
+        }
+        
+        // Calculate weekly sales (last 7 days)
+        final daysDiff = today.difference(saleDate).inDays;
+        if (daysDiff >= 0 && daysDiff < 7) {
+          weeklySales[6 - daysDiff] += total;
+        }
+      }
+      
+      // Calculate profit margin (simplified: revenue / potential gross * 100)
+      final profitMargin = potentialGross > 0 ? (totalRevenue / potentialGross * 100) : 0.0;
+
+      // Get recent sales (last 5)
+      final recentSales = sales.take(5).map((sale) => sale as Map<String, dynamic>).toList();
+
+      setState(() {
+        _todaySales = todaySales;
+        _todayTransactions = todayTransactions;
+        _yesterdaySales = yesterdaySales;
+        _totalRevenue = totalRevenue;
+        _potentialGross = potentialGross;
+        _totalItems = totalStockUnits;
+        _lowStockItems = lowStock;
+        _outOfStockItems = outOfStock;
+        _recentSales = recentSales;
+        _weeklySales = weeklySales;
+        _profitMargin = profitMargin;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              'ERROR LOADING DASHBOARD',
+              style: GoogleFonts.pressStart2p(fontSize: 12, color: Colors.red),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _loadDashboardData,
+              child: Text('RETRY', style: GoogleFonts.pressStart2p(fontSize: 10)),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadDashboardData,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Welcome header
+            Text(
+              '📊 BUSINESS COMMAND CENTER',
+              style: GoogleFonts.pressStart2p(fontSize: 14, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Real-time analytics & insights',
+              style: GoogleFonts.pressStart2p(fontSize: 10, color: Colors.grey[600]),
+            ),
+            const SizedBox(height: 24),
+
+            // Hero Stats - Today's Performance with Trends
+            _buildHeroStatsCard(),
+            const SizedBox(height: 24),
+
+            // Financial Overview Card
+            _buildFinancialOverviewCard(),
+            const SizedBox(height: 24),
+
+            // Inventory Alerts
+            Text(
+              '⚠️ INVENTORY STATUS',
+              style: GoogleFonts.pressStart2p(fontSize: 12, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _AlertCard(
+                    icon: Icons.warning_amber,
+                    iconColor: const Color(0xFFFFA726),
+                    label: 'LOW STOCK',
+                    value: _lowStockItems.toString(),
+                    subtitle: '≤5 units',
+                    backgroundColor: const Color(0xFFFFF3E0),
+                  ),
+                ),
+                const SizedBox(width: 24),
+                Expanded(
+                  child: _AlertCard(
+                    icon: Icons.error_outline,
+                    iconColor: const Color(0xFFE53935),
+                    label: 'OUT OF STOCK',
+                    value: _outOfStockItems.toString(),
+                    subtitle: '0 units',
+                    backgroundColor: const Color(0xFFFFEBEE),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            // Sales Chart
+            _buildSalesChart(),
+            const SizedBox(height: 24),
+
+            // Recent Sales
+            Text(
+              '🧾 RECENT SALES',
+              style: GoogleFonts.pressStart2p(fontSize: 12, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            if (_recentSales.isEmpty)
+              Stack(
+                children: [
+                  // Shadow
+                  Positioned(
+                    top: 4,
+                    left: 4,
+                    right: -4,
+                    bottom: -4,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.3),
+                        border: Border.all(color: Colors.black.withOpacity(0.3), width: 3),
+                      ),
+                    ),
+                  ),
+                  // Main card
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      border: Border.all(color: Colors.black, width: 3),
+                    ),
+                    child: Center(
+                      child: Column(
+                        children: [
+                          const Icon(Icons.inbox, size: 48, color: Colors.black54),
+                          const SizedBox(height: 8),
+                          Text(
+                            'NO SALES YET',
+                            style: GoogleFonts.pressStart2p(fontSize: 10, color: Colors.black),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            else
+              ..._recentSales.map((sale) {
+                final total = double.tryParse(sale['total']?.toString() ?? '0') ?? 0.0;
+                final createdAt = DateTime.parse(sale['created_at']);
+                final timeAgo = _getTimeAgo(createdAt);
+                
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  child: Stack(
+                    children: [
+                      // Shadow
+                      Positioned(
+                        top: 4,
+                        left: 4,
+                        right: -4,
+                        bottom: -4,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.3),
+                            border: Border.all(color: Colors.black.withOpacity(0.3), width: 3),
+                          ),
+                        ),
+                      ),
+                      // Main card
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          border: Border.all(color: Colors.black, width: 3),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF4CAF50),
+                                border: Border.all(color: Colors.black, width: 2),
+                              ),
+                              child: const Icon(Icons.shopping_bag, color: Colors.white, size: 20),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '₱${total.toStringAsFixed(2)}',
+                                    style: GoogleFonts.pressStart2p(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[200],
+                                      border: Border.all(color: Colors.black, width: 1),
+                                    ),
+                                    child: Text(
+                                      timeAgo,
+                                      style: GoogleFonts.pressStart2p(fontSize: 7, color: Colors.black),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF2196F3),
+                                border: Border.all(color: Colors.black, width: 2),
+                              ),
+                              child: Text(
+                                sale['payment_method']?.toString().toUpperCase() ?? 'CASH',
+                                style: GoogleFonts.pressStart2p(fontSize: 7, color: Colors.white),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _getTimeAgo(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+    
+    if (difference.inDays > 0) {
+      return '${difference.inDays}d ago';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours}h ago';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes}m ago';
+    } else {
+      return 'Just now';
+    }
+  }
+
+  Widget _buildHeroStatsCard() {
+    final salesChange = _yesterdaySales > 0 
+        ? ((_todaySales - _yesterdaySales) / _yesterdaySales * 100)
+        : 0.0;
+    final isPositive = salesChange >= 0;
+    
+    return Stack(
+      children: [
+        // Shadow
+        Positioned(
+          top: 4,
+          left: 4,
+          right: -4,
+          bottom: -4,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.3),
+              border: Border.all(color: Colors.black.withOpacity(0.3), width: 3),
+            ),
+          ),
+        ),
+        // Main card
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: const Color(0xFFE8F5E9),
+            border: Border.all(color: Colors.black, width: 3),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF4CAF50),
+                      border: Border.all(color: Colors.black, width: 2),
+                    ),
+                    child: const Icon(Icons.today, color: Colors.white, size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    "TODAY'S PERFORMANCE",
+                    style: GoogleFonts.pressStart2p(fontSize: 10, color: Colors.black),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'SALES',
+                          style: GoogleFonts.pressStart2p(fontSize: 8, color: Colors.black54),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '₱${_todaySales.toStringAsFixed(2)}',
+                          style: GoogleFonts.pressStart2p(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: isPositive ? const Color(0xFF4CAF50) : const Color(0xFFE53935),
+                            border: Border.all(color: Colors.black, width: 2),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                isPositive ? Icons.arrow_upward : Icons.arrow_downward,
+                                color: Colors.white,
+                                size: 12,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${salesChange.abs().toStringAsFixed(1)}%',
+                                style: GoogleFonts.pressStart2p(fontSize: 8, color: Colors.white),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    width: 2,
+                    height: 80,
+                    color: Colors.black,
+                  ),
+                  const SizedBox(width: 20),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'TRANSACTIONS',
+                          style: GoogleFonts.pressStart2p(fontSize: 8, color: Colors.black54),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _todayTransactions.toString(),
+                          style: GoogleFonts.pressStart2p(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF2196F3),
+                            border: Border.all(color: Colors.black, width: 2),
+                          ),
+                          child: Text(
+                            'TODAY',
+                            style: GoogleFonts.pressStart2p(fontSize: 8, color: Colors.white),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFinancialOverviewCard() {
+    return Stack(
+      children: [
+        // Shadow
+        Positioned(
+          top: 4,
+          left: 4,
+          right: -4,
+          bottom: -4,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.3),
+              border: Border.all(color: Colors.black.withOpacity(0.3), width: 3),
+            ),
+          ),
+        ),
+        // Main card
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFF3E0),
+            border: Border.all(color: Colors.black, width: 3),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFF9800),
+                      border: Border.all(color: Colors.black, width: 2),
+                    ),
+                    child: const Icon(Icons.account_balance_wallet, color: Colors.white, size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'FINANCIAL OVERVIEW',
+                    style: GoogleFonts.pressStart2p(fontSize: 10, color: Colors.black),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'TOTAL REVENUE',
+                          style: GoogleFonts.pressStart2p(fontSize: 8, color: Colors.black54),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '₱${_totalRevenue.toStringAsFixed(2)}',
+                          style: GoogleFonts.pressStart2p(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'POTENTIAL GROSS',
+                          style: GoogleFonts.pressStart2p(fontSize: 8, color: Colors.black54),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '₱${_potentialGross.toStringAsFixed(2)}',
+                          style: GoogleFonts.pressStart2p(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border.all(color: Colors.black, width: 2),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Row(
+                        children: [
+                          const Icon(Icons.inventory_2, size: 16),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              'STOCK: $_totalItems units',
+                              style: GoogleFonts.pressStart2p(fontSize: 8, color: Colors.black),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Row(
+                        children: [
+                          const Icon(Icons.show_chart, size: 16),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              'MARGIN: ${_profitMargin.toStringAsFixed(1)}%',
+                              style: GoogleFonts.pressStart2p(fontSize: 8, color: Colors.black),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSalesChart() {
+    final maxSale = _weeklySales.reduce((a, b) => a > b ? a : b);
+    final days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    
+    return Stack(
+      children: [
+        // Shadow
+        Positioned(
+          top: 4,
+          left: 4,
+          right: -4,
+          bottom: -4,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.3),
+              border: Border.all(color: Colors.black.withOpacity(0.3), width: 3),
+            ),
+          ),
+        ),
+        // Main card
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: Colors.black, width: 3),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2196F3),
+                      border: Border.all(color: Colors.black, width: 2),
+                    ),
+                    child: const Icon(Icons.bar_chart, color: Colors.white, size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'SALES TREND (LAST 7 DAYS)',
+                    style: GoogleFonts.pressStart2p(fontSize: 10, color: Colors.black),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                height: 140,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: List.generate(7, (index) {
+                    final sale = _weeklySales[index];
+                    final height = maxSale > 0 ? (sale / maxSale * 80) : 0.0;
+                    
+                    return Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (sale > 0)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 4),
+                                child: Text(
+                                  '₱${sale.toStringAsFixed(0)}',
+                                  style: GoogleFonts.pressStart2p(fontSize: 6, color: Colors.black54),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            Container(
+                              height: height.clamp(10, 80),
+                              decoration: BoxDecoration(
+                                color: index == 6 ? const Color(0xFF4CAF50) : const Color(0xFF2196F3),
+                                border: Border.all(color: Colors.black, width: 2),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              days[index],
+                              style: GoogleFonts.pressStart2p(fontSize: 8, color: Colors.black),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String label;
+  final String value;
+  final Color backgroundColor;
+
+  const _StatCard({
+    required this.icon,
+    required this.iconColor,
+    required this.label,
+    required this.value,
+    required this.backgroundColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        // Shadow
+        Positioned(
+          top: 4,
+          left: 4,
+          right: -4,
+          bottom: -4,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.3),
+              border: Border.all(color: Colors.black.withOpacity(0.3), width: 3),
+            ),
+          ),
+        ),
+        // Main card
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            border: Border.all(color: Colors.black, width: 3),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border.all(color: Colors.black, width: 2),
+                ),
+                child: Icon(icon, color: iconColor, size: 28),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                label,
+                style: GoogleFonts.pressStart2p(fontSize: 8, color: Colors.black),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                value,
+                style: GoogleFonts.pressStart2p(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AlertCard extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String label;
+  final String value;
+  final String subtitle;
+  final Color backgroundColor;
+
+  const _AlertCard({
+    required this.icon,
+    required this.iconColor,
+    required this.label,
+    required this.value,
+    required this.subtitle,
+    required this.backgroundColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        // Shadow
+        Positioned(
+          top: 4,
+          left: 4,
+          right: -4,
+          bottom: -4,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.3),
+              border: Border.all(color: Colors.black.withOpacity(0.3), width: 3),
+            ),
+          ),
+        ),
+        // Main card
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            border: Border.all(color: Colors.black, width: 3),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border.all(color: Colors.black, width: 2),
+                    ),
+                    child: Icon(icon, color: iconColor, size: 20),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: GoogleFonts.pressStart2p(fontSize: 8, color: Colors.black),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                value,
+                style: GoogleFonts.pressStart2p(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border.all(color: Colors.black, width: 1),
+                ),
+                child: Text(
+                  subtitle,
+                  style: GoogleFonts.pressStart2p(fontSize: 7, color: Colors.black),
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -1091,7 +2010,7 @@ class _ProductListState extends State<_ProductList> {
               TextField(
                 controller: _searchController,
                 decoration: InputDecoration(
-                  hintText: 'Search products...',
+                  hintText: 'Search items...',
                   prefixIcon: const Icon(Icons.search),
                   suffixIcon: _searchController.text.isNotEmpty
                       ? IconButton(
@@ -2787,9 +3706,21 @@ class _POSScreenState extends State<POSScreen> {
 
   void _addVariationToCart(Map<String, dynamic> product, Map<String, dynamic> variation) {
     final price = double.tryParse(product['price']?.toString() ?? '0') ?? 0.0;
+    final productId = product['id'] as int;
+    final variationId = variation['id'] as int;
+    final stock = variation['quantity'] as int? ?? 0;
+    final name = product['name']?.toString() ?? 'Unknown';
+    final color = variation['color']?.toString() ?? 'N/A';
+    final size = variation['size']?.toString() ?? 'N/A';
     
     setState(() {
       _cart.add({
+        'productId': productId,
+        'variationId': variationId,
+        'name': name,
+        'color': color,
+        'size': size,
+        'stock': stock,
         'product': product,
         'variation': variation,
         'quantity': 1,
@@ -3151,20 +4082,153 @@ class _POSScreenState extends State<POSScreen> {
   }
 
   Future<void> _processCheckout(String paymentMethod, double cashReceived, double change) async {
-    // TODO: Implement actual checkout process (save to database)
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'CHECKOUT COMPLETED!\nTotal: ₱${_total.toStringAsFixed(2)}\nCash: ₱${cashReceived.toStringAsFixed(2)}\nChange: ₱${change.toStringAsFixed(2)}',
+    try {
+      print('DEBUG: Starting checkout process');
+      print('DEBUG: Cart items count: ${_cart.length}');
+      print('DEBUG: Total: $_total');
+      
+      // Show loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => Center(
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.black, width: 3),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CircularProgressIndicator(),
+                const SizedBox(height: 16),
+                Text(
+                  'PROCESSING...',
+                  style: GoogleFonts.pressStart2p(fontSize: 10),
+                ),
+              ],
+            ),
+          ),
         ),
-        duration: const Duration(seconds: 3),
-      ),
-    );
-    
-    setState(() {
-      _cart.clear();
-      _calculateTotals();
-    });
+      );
+
+      // Prepare sale items and update stock
+      final List<Map<String, dynamic>> saleItems = [];
+      
+      for (int i = 0; i < _cart.length; i++) {
+        final cartItem = _cart[i];
+        print('DEBUG: Processing cart item $i: $cartItem');
+        
+        final productId = cartItem['productId'] as int;
+        final variationId = cartItem['variationId'] as int;
+        final quantity = cartItem['quantity'] as int;
+        final currentStock = cartItem['stock'] as int;
+        final price = cartItem['price'] as double;
+        final lineTotal = cartItem['lineTotal'] as double;
+        
+        print('DEBUG: Item details - ProductID: $productId, VariationID: $variationId, Qty: $quantity, Stock: $currentStock');
+        
+        // Calculate new stock quantity
+        final newStock = currentStock - quantity;
+        
+        if (newStock < 0) {
+          throw Exception('Insufficient stock for ${cartItem['name']}');
+        }
+        
+        // Update variation quantity in database
+        print('DEBUG: Updating variation quantity - ProductID: $productId, VariationID: $variationId, NewStock: $newStock');
+        await ApiService.updateVariationQuantity(
+          productId: productId,
+          variationId: variationId,
+          newQuantity: newStock,
+        );
+        print('DEBUG: Variation quantity updated successfully');
+        
+        // Add to sale items
+        saleItems.add({
+          'product_id': productId,
+          'variation_id': variationId,
+          'product_name': cartItem['name'],
+          'color': cartItem['color'],
+          'size': cartItem['size'],
+          'quantity': quantity,
+          'price': price,
+          'line_total': lineTotal,
+        });
+      }
+      
+      print('DEBUG: All variations updated. Creating sale record...');
+      print('DEBUG: Sale items: $saleItems');
+      
+      // Create sale record
+      await ApiService.createSale(
+        total: _total,
+        paymentMethod: paymentMethod,
+        cashReceived: cashReceived,
+        change: change,
+        items: saleItems,
+      );
+      
+      print('DEBUG: Sale record created successfully');
+      
+      // Close loading dialog
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+      
+      // Close cart bottom sheet if open (for mobile)
+      if (mounted && Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+      
+      // Show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: const Color(0xFF4CAF50),
+            content: Text(
+              '✅ CHECKOUT COMPLETED!\nTotal: ₱${_total.toStringAsFixed(2)}\nCash: ₱${cashReceived.toStringAsFixed(2)}\nChange: ₱${change.toStringAsFixed(2)}',
+              style: GoogleFonts.pressStart2p(fontSize: 10, color: Colors.white),
+            ),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+      
+      // Clear cart and reload products
+      setState(() {
+        _cart.clear();
+        _calculateTotals();
+      });
+      
+      // Reload products to reflect updated stock
+      _loadProducts();
+      
+    } catch (e, stackTrace) {
+      print('DEBUG: Checkout error: $e');
+      print('DEBUG: Stack trace: $stackTrace');
+      
+      // Close loading dialog if open
+      if (mounted && Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+      
+      // Show error message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: const Color(0xFFF44336),
+            content: Text(
+              '❌ CHECKOUT FAILED!\n${e.toString()}',
+              style: GoogleFonts.pressStart2p(fontSize: 10, color: Colors.white),
+            ),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -3216,7 +4280,7 @@ class _POSScreenState extends State<POSScreen> {
           child: TextField(
             controller: _searchController,
             decoration: InputDecoration(
-              hintText: 'SEARCH PRODUCTS...',
+              hintText: 'SEARCH ITEMS...',
               hintStyle: GoogleFonts.pressStart2p(fontSize: 10),
               prefixIcon: const Icon(Icons.search),
               border: OutlineInputBorder(
@@ -3299,7 +4363,7 @@ class _POSScreenState extends State<POSScreen> {
               crossAxisAlignment: CrossAxisAlignment.center,
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Header with ITEM CARD text
+                // Header with item name
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
@@ -3312,12 +4376,14 @@ class _POSScreenState extends State<POSScreen> {
                     ),
                   ),
                   child: Text(
-                    '─── ITEM CARD ─────',
+                    name.toUpperCase(),
                     style: GoogleFonts.pressStart2p(
                       fontSize: isMobile ? 7 : 8,
                       color: const Color(0xFFECF0F1),
                     ),
                     textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 
@@ -3405,22 +4471,6 @@ class _POSScreenState extends State<POSScreen> {
                       ],
                       ),
                     ),
-                  ),
-                ),
-                
-                // Product name
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  child: Text(
-                    name.toUpperCase(),
-                    style: GoogleFonts.pressStart2p(
-                      fontSize: isMobile ? 7 : 8,
-                      color: Colors.black,
-                      height: 1.2,
-                    ),
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 
@@ -3878,7 +4928,9 @@ class _ConfigScreen extends StatefulWidget {
   State<_ConfigScreen> createState() => _ConfigScreenState();
 }
 
-class _ConfigScreenState extends State<_ConfigScreen> {
+class _ConfigScreenState extends State<_ConfigScreen> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  
   List<String> _colors = [];
   List<String> _sizes = [];
   bool _isLoading = true;
@@ -3890,11 +4942,13 @@ class _ConfigScreenState extends State<_ConfigScreen> {
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     _loadConfiguration();
   }
 
   @override
   void dispose() {
+    _tabController.dispose();
     _colorController.dispose();
     _sizeController.dispose();
     super.dispose();
@@ -4012,126 +5066,219 @@ class _ConfigScreenState extends State<_ConfigScreen> {
     }
 
     return Scaffold(
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Colors Section
-            _Section(
-              title: 'COLOR OPTIONS',
-              child: Column(
-                children: [
-                  // Add new color
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _colorController,
-                          decoration: const InputDecoration(
-                            labelText: 'Add Color',
-                            hintText: 'e.g., Black, White, Red',
-                          ),
-                          textInputAction: TextInputAction.done,
-                          onSubmitted: (_) => _addColor(),
+      body: Column(
+        children: [
+          // Tab Bar
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border(
+                bottom: BorderSide(color: Colors.grey[300]!, width: 1),
+              ),
+            ),
+            child: TabBar(
+              controller: _tabController,
+              labelColor: Colors.black,
+              unselectedLabelColor: Colors.grey,
+              indicatorColor: const Color(0xFF4CAF50),
+              indicatorWeight: 3,
+              labelStyle: GoogleFonts.pressStart2p(fontSize: 10),
+              unselectedLabelStyle: GoogleFonts.pressStart2p(fontSize: 10),
+              tabs: const [
+                Tab(
+                  icon: Icon(Icons.people),
+                  text: 'USERS',
+                ),
+                Tab(
+                  icon: Icon(Icons.inventory_2),
+                  text: 'ITEMS',
+                ),
+              ],
+            ),
+          ),
+          // Tab Views
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildUsersTab(),
+                _buildItemsTab(),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUsersTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '👥 USER MANAGEMENT',
+            style: GoogleFonts.pressStart2p(fontSize: 14, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Manage system users and permissions',
+            style: GoogleFonts.pressStart2p(fontSize: 10, color: Colors.grey[600]),
+          ),
+          const SizedBox(height: 24),
+          // TODO: Add user management UI
+          Center(
+            child: Column(
+              children: [
+                Icon(Icons.construction, size: 64, color: Colors.grey[400]),
+                const SizedBox(height: 16),
+                Text(
+                  'COMING SOON',
+                  style: GoogleFonts.pressStart2p(fontSize: 12, color: Colors.grey[600]),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'User management features\nwill be available here',
+                  style: GoogleFonts.pressStart2p(fontSize: 8, color: Colors.grey[500]),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildItemsTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '📦 ITEM CONFIGURATION',
+            style: GoogleFonts.pressStart2p(fontSize: 14, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Configure variation options',
+            style: GoogleFonts.pressStart2p(fontSize: 10, color: Colors.grey[600]),
+          ),
+          const SizedBox(height: 24),
+          // Colors Section
+          _Section(
+            title: 'COLOR OPTIONS',
+            child: Column(
+              children: [
+                // Add new color
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _colorController,
+                        decoration: const InputDecoration(
+                          labelText: 'Add Color',
+                          hintText: 'e.g., Black, White, Red',
                         ),
+                        textInputAction: TextInputAction.done,
+                        onSubmitted: (_) => _addColor(),
                       ),
-                      const SizedBox(width: 8),
-                      ElevatedButton(
-                        onPressed: _addColor,
-                        child: Text('ADD', style: GoogleFonts.pressStart2p(fontSize: 10)),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  // Colors list
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: _colors.map((color) => _ColorChip(
-                      color: color,
-                      onDelete: () => _removeColor(color),
-                    )).toList(),
-                  ),
-                ],
-              ),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: _addColor,
+                      child: Text('ADD', style: GoogleFonts.pressStart2p(fontSize: 10)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                // Colors list
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _colors.map((color) => _ColorChip(
+                    color: color,
+                    onDelete: () => _removeColor(color),
+                  )).toList(),
+                ),
+              ],
             ),
-
-            const SizedBox(height: 24),
-
-            // Sizes Section
-            _Section(
-              title: 'SIZE OPTIONS',
-              child: Column(
-                children: [
-                  // Add new size
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _sizeController,
-                          decoration: const InputDecoration(
-                            labelText: 'Add Size',
-                            hintText: 'e.g., S, M, L, 30, 32',
-                          ),
-                          textInputAction: TextInputAction.done,
-                          onSubmitted: (_) => _addSize(),
+          ),
+          const SizedBox(height: 24),
+          // Sizes Section
+          _Section(
+            title: 'SIZE OPTIONS',
+            child: Column(
+              children: [
+                // Add new size
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _sizeController,
+                        decoration: const InputDecoration(
+                          labelText: 'Add Size',
+                          hintText: 'e.g., S, M, L, 30, 32',
                         ),
+                        textInputAction: TextInputAction.done,
+                        onSubmitted: (_) => _addSize(),
                       ),
-                      const SizedBox(width: 8),
-                      ElevatedButton(
-                        onPressed: _addSize,
-                        child: Text('ADD', style: GoogleFonts.pressStart2p(fontSize: 10)),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  // Sizes list
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: _sizes.map((size) => _SizeChip(
-                      size: size,
-                      onDelete: () => _removeSize(size),
-                    )).toList(),
-                  ),
-                ],
-              ),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: _addSize,
+                      child: Text('ADD', style: GoogleFonts.pressStart2p(fontSize: 10)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                // Sizes list
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _sizes.map((size) => _SizeChip(
+                    size: size,
+                    onDelete: () => _removeSize(size),
+                  )).toList(),
+                ),
+              ],
             ),
-
-            const SizedBox(height: 24),
-
-            // Info Section
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8F9FA),
-                border: Border.all(color: Colors.black, width: 2),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '📋 HOW TO USE',
-                    style: GoogleFonts.pressStart2p(fontSize: 12, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '• Add colors and sizes that you commonly use\n'
-                    '• These options will appear as dropdowns in the Add Item form\n'
-                    '• This makes adding variations much faster and more consistent\n'
-                    '• Remove options that you no longer need',
-                    style: GoogleFonts.pressStart2p(fontSize: 10),
-                  ),
-                ],
-              ),
+          ),
+          const SizedBox(height: 24),
+          // Info Section
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8F9FA),
+              border: Border.all(color: Colors.black, width: 2),
             ),
-          ],
-        ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '📋 HOW TO USE',
+                  style: GoogleFonts.pressStart2p(fontSize: 12, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '• Add colors and sizes that you commonly use\n'
+                  '• These options will appear as dropdowns in the Add Item form\n'
+                  '• This makes adding variations much faster and more consistent\n'
+                  '• Remove options that you no longer need',
+                  style: GoogleFonts.pressStart2p(fontSize: 10),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 }
+
+// End of _ConfigScreenState class
 
 class _ColorChip extends StatelessWidget {
   final String color;
