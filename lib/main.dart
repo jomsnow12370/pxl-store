@@ -897,8 +897,8 @@ class _InventoryScreenState extends State<_InventoryScreen> with SingleTickerPro
           controller: _tabController,
           labelStyle: GoogleFonts.pressStart2p(fontSize: 12),
           tabs: const [
-            Tab(text: 'VIEW PRODUCTS'),
-            Tab(text: 'ADD PRODUCT'),
+            Tab(text: 'VIEW ITEMS'),
+            Tab(text: 'ADD ITEM'),
           ],
         ),
         Expanded(
@@ -1133,30 +1133,100 @@ class _ProductListState extends State<_ProductList> {
           ),
         ),
         Expanded(
-          child: _filteredProducts.isEmpty
-              ? Center(
-                  child: Text(
-                    'NO PRODUCTS FOUND',
-                    style: GoogleFonts.pressStart2p(fontSize: 12, color: Colors.black54),
-                  ),
-                )
-              : RefreshIndicator(
-                  onRefresh: _loadProducts,
-                  child: ListView.separated(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    itemCount: _filteredProducts.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
-                    itemBuilder: (context, index) {
-                      final product = _filteredProducts[index];
-                      final variations = (product['variations'] as List?) ?? [];
-                      return _ProductCard(
-                        product: product,
-                        variations: variations,
-                        onUpdated: _loadProducts,
-                      );
-                    },
+          child: Column(
+            children: [
+              // Inventory header with capacity
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2C3E50),
+                  border: const Border(
+                    top: BorderSide(color: Colors.black, width: 2),
+                    left: BorderSide(color: Colors.black, width: 2),
+                    right: BorderSide(color: Colors.black, width: 2),
                   ),
                 ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          '🎒',
+                          style: GoogleFonts.pressStart2p(fontSize: 16),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'ITEM INVENTORY',
+                          style: GoogleFonts.pressStart2p(
+                            fontSize: 12,
+                            color: const Color(0xFFECF0F1),
+                          ),
+                        ),
+                      ],
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF34495E),
+                        border: Border.all(color: Colors.black, width: 1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        '(${_filteredProducts.length}/50)',
+                        style: GoogleFonts.pressStart2p(
+                          fontSize: 10,
+                          color: const Color(0xFFECF0F1),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Grid view for items
+              Expanded(
+                child: _filteredProducts.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              '📦',
+                              style: GoogleFonts.pressStart2p(fontSize: 48),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'NO ITEMS FOUND',
+                              style: GoogleFonts.pressStart2p(fontSize: 12, color: Colors.black54),
+                            ),
+                          ],
+                        ),
+                      )
+                    : RefreshIndicator(
+                        onRefresh: _loadProducts,
+                        child: GridView.builder(
+                          padding: const EdgeInsets.all(16),
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 5,
+                            childAspectRatio: 0.8,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                          ),
+                          itemCount: _filteredProducts.length,
+                          itemBuilder: (context, index) {
+                            final product = _filteredProducts[index];
+                            final variations = (product['variations'] as List?) ?? [];
+                            return _InventoryItemCard(
+                              product: product,
+                              variations: variations,
+                              onUpdated: _loadProducts,
+                            );
+                          },
+                        ),
+                      ),
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -1195,6 +1265,210 @@ class _FilterChip extends StatelessWidget {
             fontSize: 9,
             color: isSelected ? Colors.white : Colors.black87,
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _InventoryItemCard extends StatelessWidget {
+  final Map<String, dynamic> product;
+  final List<dynamic> variations;
+  final VoidCallback onUpdated;
+
+  const _InventoryItemCard({
+    required this.product,
+    required this.variations,
+    required this.onUpdated,
+  });
+
+  double? _parseDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value);
+    return null;
+  }
+
+  String _getItemIcon(String itemName) {
+    final name = itemName.toLowerCase();
+    if (name.contains('shirt') || name.contains('tee')) return '👕';
+    if (name.contains('pants') || name.contains('jeans')) return '👖';
+    if (name.contains('cap') || name.contains('hat')) return '🧢';
+    if (name.contains('shoes') || name.contains('sneakers')) return '👟';
+    if (name.contains('watch') || name.contains('time')) return '⌚';
+    if (name.contains('bag') || name.contains('backpack')) return '🎒';
+    if (name.contains('phone') || name.contains('mobile')) return '📱';
+    if (name.contains('laptop') || name.contains('computer')) return '💻';
+    if (name.contains('headphone') || name.contains('ear')) return '🎧';
+    if (name.contains('camera') || name.contains('photo')) return '📷';
+    if (name.contains('game') || name.contains('controller')) return '🎮';
+    return '📦'; // Default icon
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final name = product['name'] as String? ?? 'Unknown';
+    final price = _parseDouble(product['price']) ?? 0.0;
+    final photoUrl = product['photo_url'] as String?;
+    
+    // Calculate total stock
+    int totalStock = 0;
+    for (var v in variations) {
+      totalStock += (v['quantity'] as num?)?.toInt() ?? 0;
+    }
+    
+    final isInStock = totalStock > 0;
+    final itemIcon = _getItemIcon(name);
+
+    return GestureDetector(
+      onTap: () {
+        // Show item details dialog
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text(
+              name.toUpperCase(),
+              style: GoogleFonts.pressStart2p(fontSize: 12),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (photoUrl != null && photoUrl.isNotEmpty)
+                  Container(
+                    height: 120,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.black, width: 2),
+                    ),
+                    child: Image.network(
+                      photoUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        color: Colors.grey[200],
+                        child: const Center(child: Icon(Icons.image)),
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 12),
+                Text(
+                  '💰 Price: ₱${price.toStringAsFixed(2)}',
+                  style: GoogleFonts.pressStart2p(fontSize: 10),
+                ),
+                Text(
+                  '📦 Stock: $totalStock',
+                  style: GoogleFonts.pressStart2p(
+                    fontSize: 10,
+                    color: isInStock ? Colors.green : Colors.red,
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text('CLOSE', style: GoogleFonts.pressStart2p(fontSize: 10)),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  // TODO: Add edit functionality
+                },
+                child: Text('EDIT', style: GoogleFonts.pressStart2p(fontSize: 10)),
+              ),
+            ],
+          ),
+        );
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: isInStock ? const Color(0xFFF5F5F5) : const Color(0xFFFFF0F0),
+          border: Border.all(
+            color: isInStock ? Colors.black : Colors.red,
+            width: 2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              offset: const Offset(2, 2),
+              blurRadius: 0,
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Item icon or image
+            Expanded(
+              flex: 3,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(4),
+                decoration: const BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(color: Colors.black, width: 1),
+                  ),
+                ),
+                child: photoUrl != null && photoUrl.isNotEmpty
+                    ? Image.network(
+                        photoUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Center(
+                          child: Text(
+                            itemIcon,
+                            style: const TextStyle(fontSize: 24),
+                          ),
+                        ),
+                      )
+                    : Center(
+                        child: Text(
+                          itemIcon,
+                          style: const TextStyle(fontSize: 24),
+                        ),
+                      ),
+              ),
+            ),
+            // Item name
+            Expanded(
+              flex: 2,
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      name.length > 8 
+                          ? '${name.substring(0, 6)}...'
+                          : name,
+                      style: GoogleFonts.pressStart2p(
+                        fontSize: 8,
+                        color: Colors.black,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'x$totalStock',
+                      style: GoogleFonts.pressStart2p(
+                        fontSize: 7,
+                        color: isInStock ? Colors.green : Colors.red,
+                      ),
+                    ),
+                    Text(
+                      '💰${price.toInt()}',
+                      style: GoogleFonts.pressStart2p(
+                        fontSize: 7,
+                        color: const Color(0xFF27AE60),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -1430,7 +1704,7 @@ class _ProductCard extends StatelessWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('DELETE PRODUCT?', style: GoogleFonts.pressStart2p(fontSize: 12)),
+        title: Text('DELETE ITEM?', style: GoogleFonts.pressStart2p(fontSize: 12)),
         content: Text(
           'Are you sure you want to delete "$name"? This action cannot be undone.',
           style: GoogleFonts.pressStart2p(fontSize: 10),
@@ -1815,7 +2089,7 @@ class _InventoryFormState extends State<_InventoryForm> {
               children: [
                 TextField(
                   controller: _nameCtrl,
-                  decoration: const InputDecoration(labelText: 'PRODUCT NAME', hintText: 'Graphic Tee'),
+                  decoration: const InputDecoration(labelText: 'ITEM NAME', hintText: 'Graphic Tee'),
                   textInputAction: TextInputAction.next,
                 ),
                 const SizedBox(height: 12),
@@ -2125,7 +2399,7 @@ class _POSScreenState extends State<POSScreen> {
     });
     
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('PRODUCT ADDED TO CART!')),
+      const SnackBar(content: Text('ITEM ADDED TO CART!')),
     );
   }
 
@@ -2652,21 +2926,23 @@ class _POSScreenState extends State<POSScreen> {
                   flex: 4,
                   child: Container(
                     width: double.infinity,
-                    margin: const EdgeInsets.all(4),
+                    margin: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: Colors.grey[200],
                       border: Border.all(color: Colors.black, width: 2),
                     ),
-                    child: Stack(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.zero,
-                          child: photoUrl != null && photoUrl.isNotEmpty
-                              ? Image.network(
-                                  photoUrl,
-                                  fit: BoxFit.cover,
-                                  width: double.infinity,
-                                  height: double.infinity,
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: Stack(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.zero,
+                            child: photoUrl != null && photoUrl.isNotEmpty
+                                ? Image.network(
+                                    photoUrl,
+                                    fit: BoxFit.cover,
+                                    width: double.infinity,
+                                    height: double.infinity,
                                   loadingBuilder: (context, child, loadingProgress) {
                                     if (loadingProgress == null) return child;
                                     return Container(
@@ -2727,6 +3003,7 @@ class _POSScreenState extends State<POSScreen> {
                           ),
                         ),
                       ],
+                      ),
                     ),
                   ),
                 ),
