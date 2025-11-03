@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'dart:async';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:image_picker/image_picker.dart';
 
 class ApiService {
   static const _storage = FlutterSecureStorage();
@@ -82,7 +84,7 @@ class ApiService {
   // For Android emulator, use 10.0.2.2 instead of localhost
   // For iOS simulator, use localhost
   // For physical device, use your computer's local IP (e.g., 192.168.x.x)
-  static const String baseUrl = 'http://localhost:3000/api';
+  static const String baseUrl = 'http://192.168.0.85:3000/api';
   
   static String getBaseUrl() {
     // For Android emulator, use 10.0.2.2 instead of localhost
@@ -100,16 +102,20 @@ class ApiService {
     required List<Map<String, dynamic>> variations,
   }) async {
     try {
+      final requestBody = {
+        'name': name,
+        'cost': cost,
+        'price': price,
+        'photo_url': photoUrl,
+        'variations': variations,
+      };
+      
+      print('DEBUG: Creating product with body: $requestBody');
+      
       final response = await http.post(
         Uri.parse('${getBaseUrl()}/products'),
         headers: _headers,
-        body: jsonEncode({
-          'name': name,
-          'cost': cost,
-          'price': price,
-          'photo_url': photoUrl,
-          'variations': variations,
-        }),
+        body: jsonEncode(requestBody),
       );
 
       if (response.statusCode == 201) {
@@ -189,6 +195,105 @@ class ApiService {
       }
     } catch (e) {
       throw Exception('Network error: $e');
+    }
+  }
+
+  // Upload product photo from File (mobile/desktop)
+  static Future<Map<String, dynamic>> uploadPhoto(File imageFile) async {
+    try {
+      await init(); // Ensure token is loaded
+      
+      // Create multipart request
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('${getBaseUrl()}/products/upload'),
+      );
+      
+      // Add authorization header
+      if (_token != null) {
+        request.headers['Authorization'] = 'Bearer $_token';
+      }
+      
+      // Add image file
+      final imageBytes = await imageFile.readAsBytes();
+      final multipartFile = http.MultipartFile.fromBytes(
+        'photo',
+        imageBytes,
+        filename: imageFile.path.split('/').last,
+      );
+      request.files.add(multipartFile);
+      
+      // Send request
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['message'] ?? 'Failed to upload photo');
+      }
+    } catch (e) {
+      throw Exception('Upload error: $e');
+    }
+  }
+
+  // Upload product photo from XFile (works on all platforms including web)
+  static Future<Map<String, dynamic>> uploadPhotoFromXFile(XFile imageFile) async {
+    try {
+      await init(); // Ensure token is loaded
+      
+      print('DEBUG: Token loaded: ${_token != null ? "Yes" : "No"}');
+      print('DEBUG: Upload URL: ${getBaseUrl()}/products/upload');
+      
+      // Create multipart request
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('${getBaseUrl()}/products/upload'),
+      );
+      
+      // Add authorization header
+      if (_token != null) {
+        request.headers['Authorization'] = 'Bearer $_token';
+        print('DEBUG: Authorization header added');
+      } else {
+        print('DEBUG: WARNING - No token available for upload!');
+      }
+      
+      // Add image file
+      final imageBytes = await imageFile.readAsBytes();
+      final multipartFile = http.MultipartFile.fromBytes(
+        'photo',
+        imageBytes,
+        filename: imageFile.name,
+      );
+      request.files.add(multipartFile);
+      
+      // Send request
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      
+      print('DEBUG: Upload response status: ${response.statusCode}');
+      print('DEBUG: Upload response body: ${response.body}');
+      
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        print('DEBUG: Upload failed with status ${response.statusCode}');
+        print('DEBUG: Response body: ${response.body}');
+        try {
+          final error = jsonDecode(response.body);
+          throw Exception(error['message'] ?? 'Failed to upload photo');
+        } catch (e) {
+          final bodyPreview = response.body.length > 200 
+              ? response.body.substring(0, 200) 
+              : response.body;
+          throw Exception('Failed to upload photo. Status: ${response.statusCode}, Body: $bodyPreview');
+        }
+      }
+    } catch (e) {
+      print('DEBUG: Upload exception: $e');
+      throw Exception('Upload error: $e');
     }
   }
 }

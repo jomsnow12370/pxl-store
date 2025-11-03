@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'services/api_service.dart';
 
 void main() {
@@ -443,34 +447,54 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _index,
-        onTap: _onTabTapped,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: Theme.of(context).colorScheme.primary,
-        unselectedItemColor: Colors.grey,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard_outlined),
-            label: 'Dashboard',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.inventory_2_outlined),
-            label: 'Inventory',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.point_of_sale_outlined),
-            label: 'POS',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.receipt_long_outlined),
-            label: 'Sales',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.account_balance_wallet_outlined),
-            label: 'Expenses',
-          ),
-        ],
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.3),
+              offset: const Offset(0, -4),
+              blurRadius: 0,
+            ),
+          ],
+        ),
+        child: BottomNavigationBar(
+          currentIndex: _index,
+          onTap: _onTabTapped,
+          type: BottomNavigationBarType.fixed,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          selectedFontSize: 10,
+          unselectedFontSize: 10,
+          selectedItemColor: Colors.black,
+          unselectedItemColor: Colors.grey[700],
+          items: [
+            BottomNavigationBarItem(
+              icon: Icon(
+                Icons.dashboard,
+                size: 24,
+                color: _index == 0 ? const Color(0xFF4CAF50) : Colors.black,
+              ),
+              label: 'HOME',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(
+                Icons.shopping_bag,
+                size: 24,
+                color: _index == 1 ? const Color(0xFF2196F3) : Colors.black,
+              ),
+              label: 'INVENTORY',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(
+                Icons.point_of_sale,
+                size: 24,
+                color: _index == 2 ? const Color(0xFFFF9800) : Colors.black,
+              ),
+              label: 'POS',
+            ),
+                      ],
+        ),
       ),
     );
   }
@@ -482,11 +506,7 @@ class _HomeScreenState extends State<HomeScreen> {
       case 1:
         return _InventoryScreen(key: const ValueKey('inventory-screen'));
       case 2:
-        return const _ComingSoon(key: ValueKey('pos'), label: 'POINT OF SALE');
-      case 3:
-        return const _ComingSoon(key: ValueKey('sales'), label: 'SALES');
-      case 4:
-        return const _ComingSoon(key: ValueKey('expenses'), label: 'EXPENSES');
+        return const POSScreen(key: ValueKey('pos-screen'));
       default:
         return const SizedBox.shrink();
     }
@@ -1230,6 +1250,8 @@ class _ProductCard extends StatelessWidget {
           child: Container(color: Colors.black),
         ),
         Card(
+          elevation: 6,
+          shadowColor: Colors.black.withOpacity(0.3),
           child: Padding(
             padding: const EdgeInsets.all(12.0),
             child: Column(
@@ -1462,6 +1484,10 @@ class _InventoryFormState extends State<_InventoryForm> {
   final TextEditingController _priceCtrl = TextEditingController();
   final List<_VariationRowData> _variations = [_VariationRowData()];
   double? _profitMargin;
+  File? _selectedImage;
+  Uint8List? _webImageBytes; // For web platform
+  String? _uploadedImageUrl;
+  bool _isUploading = false;
 
   @override
   void dispose() {
@@ -1498,10 +1524,122 @@ class _InventoryFormState extends State<_InventoryForm> {
     setState(() {});
   }
 
+  Future<void> _pickImage() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 80,
+      );
+      
+      if (image != null) {
+        if (kIsWeb) {
+          // For web, read bytes
+          final bytes = await image.readAsBytes();
+          setState(() {
+            _webImageBytes = bytes;
+          });
+        } else {
+          // For mobile/desktop, use file
+          setState(() {
+            _selectedImage = File(image.path);
+          });
+        }
+        
+        // Upload the image
+        _uploadImage(image);
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error picking image: $e')),
+      );
+    }
+  }
+
+  Future<void> _uploadImage(XFile imageFile) async {
+    setState(() {
+      _isUploading = true;
+    });
+    
+    try {
+      final result = await ApiService.uploadPhotoFromXFile(imageFile);
+      
+      print('DEBUG: Upload result: $result');
+      
+      if (result['success'] == true) {
+        final baseUrl = ApiService.getBaseUrl().replaceAll('/api', '');
+        final fullUrl = '$baseUrl${result['data']['url']}';
+        
+        print('DEBUG: Base URL: $baseUrl');
+        print('DEBUG: Photo URL from server: ${result['data']['url']}');
+        print('DEBUG: Final photo URL: $fullUrl');
+        
+        setState(() {
+          _uploadedImageUrl = fullUrl;
+          _isUploading = false;
+        });
+        
+        print('DEBUG: _uploadedImageUrl set to: $_uploadedImageUrl');
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Photo uploaded! URL: ${_uploadedImageUrl?.substring(0, 50)}...')),
+          );
+        }
+      } else {
+        print('DEBUG: Upload returned success: false');
+        throw Exception(result['message'] ?? 'Upload failed');
+      }
+    } catch (e) {
+      print('DEBUG: Upload caught exception: $e');
+      
+      setState(() {
+        _isUploading = false;
+      });
+      
+      if (mounted) {
+        // Show error in a dialog for better visibility
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Upload Failed'),
+            content: SingleChildScrollView(
+              child: Text('Error: $e'),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
+    }
+  }
+
+  void _removeImage() {
+    setState(() {
+      _selectedImage = null;
+      _webImageBytes = null;
+      _uploadedImageUrl = null;
+    });
+  }
+
   bool _isSaving = false;
 
   Future<void> _save() async {
     if (_isSaving) return;
+    
+    // Check if photo is still uploading
+    if (_isUploading) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('PLEASE WAIT FOR PHOTO TO UPLOAD')),
+      );
+      return;
+    }
 
     final name = _nameCtrl.text.trim();
     final cost = double.tryParse(_costCtrl.text.trim());
@@ -1512,6 +1650,18 @@ class _InventoryFormState extends State<_InventoryForm> {
         const SnackBar(content: Text('ENTER NAME AND COST')),
       );
       return;
+    }
+    
+    // Warn if image was selected but upload failed
+    if ((_selectedImage != null || _webImageBytes != null) && _uploadedImageUrl == null) {
+      print('DEBUG: WARNING - Image selected but upload URL is null!');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Photo upload may have failed. Product will be saved without photo.'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+      await Future.delayed(const Duration(seconds: 1)); // Give user time to see the message
     }
 
     final List<Map<String, dynamic>> variations = [];
@@ -1530,13 +1680,18 @@ class _InventoryFormState extends State<_InventoryForm> {
 
     setState(() => _isSaving = true);
 
+    print('DEBUG: About to save product with photo URL: $_uploadedImageUrl');
+
     try {
       final response = await ApiService.createProduct(
         name: name,
         cost: cost,
         price: price,
+        photoUrl: _uploadedImageUrl,
         variations: variations,
       );
+      
+      print('DEBUG: Product saved successfully. Response: $response');
 
       // Clear form on success
       _nameCtrl.clear();
@@ -1548,7 +1703,12 @@ class _InventoryFormState extends State<_InventoryForm> {
       _variations[0].colorCtrl.clear();
       _variations[0].sizeCtrl.clear();
       _variations[0].qtyCtrl.clear();
-      setState(() => _profitMargin = null);
+      setState(() {
+        _profitMargin = null;
+        _selectedImage = null;
+        _webImageBytes = null;
+        _uploadedImageUrl = null;
+      });
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1573,6 +1733,7 @@ class _InventoryFormState extends State<_InventoryForm> {
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1587,17 +1748,63 @@ class _InventoryFormState extends State<_InventoryForm> {
                     color: const Color(0xFFE0E0E0),
                     border: Border.all(width: 3, color: Colors.black),
                   ),
-                  child: const Icon(Icons.image, color: Colors.black54),
+                  child: _isUploading
+                      ? const Center(
+                          child: SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        )
+                      : kIsWeb && _webImageBytes != null
+                          ? Image.memory(
+                              _webImageBytes!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => 
+                                  const Icon(Icons.image, color: Colors.black54),
+                            )
+                          : !kIsWeb && _selectedImage != null
+                              ? Image.file(
+                                  _selectedImage!,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => 
+                                      const Icon(Icons.image, color: Colors.black54),
+                                )
+                              : _uploadedImageUrl != null
+                                  ? Image.network(
+                                      _uploadedImageUrl!,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => 
+                                          const Icon(Icons.image, color: Colors.black54),
+                                    )
+                                  : const Icon(Icons.image, color: Colors.black54),
                 ),
                 const SizedBox(width: 12),
-                OutlinedButton.icon(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Add Photo — UI only for now')),
-                    );
-                  },
-                  icon: const Icon(Icons.add_a_photo),
-                  label: const Text('ADD PHOTO'),
+                Column(
+                  children: [
+                    if (_selectedImage == null && _webImageBytes == null && _uploadedImageUrl == null)
+                      OutlinedButton.icon(
+                        onPressed: _pickImage,
+                        icon: const Icon(Icons.add_a_photo),
+                        label: const Text('ADD PHOTO'),
+                      ),
+                    if (_selectedImage != null || _webImageBytes != null || _uploadedImageUrl != null) ...[
+                      OutlinedButton.icon(
+                        onPressed: _pickImage,
+                        icon: const Icon(Icons.edit),
+                        label: const Text('CHANGE'),
+                      ),
+                      const SizedBox(height: 8),
+                      OutlinedButton.icon(
+                        onPressed: _removeImage,
+                        icon: const Icon(Icons.delete),
+                        label: const Text('REMOVE'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ],
             ),
@@ -1771,5 +1978,1220 @@ class _VariationRowData {
     colorCtrl.dispose();
     sizeCtrl.dispose();
     qtyCtrl.dispose();
+  }
+}
+
+class POSScreen extends StatefulWidget {
+  const POSScreen({super.key});
+
+  @override
+  State<POSScreen> createState() => _POSScreenState();
+}
+
+class _POSScreenState extends State<POSScreen> {
+  final List<Map<String, dynamic>> _cart = [];
+  final TextEditingController _searchController = TextEditingController();
+  List<dynamic> _products = [];
+  List<dynamic> _filteredProducts = [];
+  bool _isLoading = true;
+  
+  final double _taxRate = 0.08;
+  double _subtotal = 0.0;
+  double _tax = 0.0;
+  double _total = 0.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProducts();
+    _searchController.addListener(_filterProducts);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadProducts() async {
+    try {
+      final products = await ApiService.getProducts();
+      setState(() {
+        _products = products;
+        _filteredProducts = products;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading products: ${e.toString()}')),
+        );
+      }
+    }
+  }
+
+  void _filterProducts() {
+    final query = _searchController.text.toLowerCase();
+    setState(() {
+      _filteredProducts = _products.where((product) {
+        final name = product['name']?.toString().toLowerCase() ?? '';
+        return name.contains(query);
+      }).toList();
+    });
+  }
+
+  void _addToCart(Map<String, dynamic> product) {
+    // Show variation picker for products with variations
+    final variations = product['variations'] as List? ?? [];
+    if (variations.isNotEmpty) {
+      _showVariationPicker(product, variations);
+    } else {
+      // Add directly if no variations
+      _addVariationToCart(product, {});
+    }
+  }
+
+  void _showVariationPicker(Map<String, dynamic> product, List<dynamic> variations) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          'SELECT VARIATION',
+          style: GoogleFonts.pressStart2p(fontSize: 12),
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: variations.length,
+            itemBuilder: (context, index) {
+              final variation = variations[index] as Map<String, dynamic>;
+              final size = variation['size']?.toString() ?? 'N/A';
+              final color = variation['color']?.toString() ?? 'N/A';
+              final quantity = variation['quantity'] as int? ?? 0;
+              final price = double.tryParse(product['price']?.toString() ?? '0') ?? 0.0;
+              
+              return Card(
+                margin: const EdgeInsets.symmetric(vertical: 4),
+                child: ListTile(
+                  title: Text(
+                    '$size / $color',
+                    style: GoogleFonts.pressStart2p(fontSize: 10),
+                  ),
+                  subtitle: Text(
+                    'Stock: $quantity',
+                    style: GoogleFonts.pressStart2p(fontSize: 8),
+                  ),
+                  trailing: Text(
+                    '₱${price.toStringAsFixed(2)}',
+                    style: GoogleFonts.pressStart2p(fontSize: 10),
+                  ),
+                  onTap: quantity > 0
+                      ? () {
+                          Navigator.of(context).pop();
+                          _addVariationToCart(product, variation);
+                        }
+                      : null,
+                ),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('CANCEL', style: GoogleFonts.pressStart2p(fontSize: 10)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _addVariationToCart(Map<String, dynamic> product, Map<String, dynamic> variation) {
+    final price = double.tryParse(product['price']?.toString() ?? '0') ?? 0.0;
+    
+    setState(() {
+      _cart.add({
+        'product': product,
+        'variation': variation,
+        'quantity': 1,
+        'price': price,
+        'lineTotal': price,
+      });
+      _calculateTotals();
+    });
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('PRODUCT ADDED TO CART!')),
+    );
+  }
+
+  void _removeFromCart(int index) {
+    setState(() {
+      _cart.removeAt(index);
+      _calculateTotals();
+    });
+  }
+
+  void _updateQuantity(int index, int quantity) {
+    if (quantity <= 0) {
+      _removeFromCart(index);
+      return;
+    }
+    
+    setState(() {
+      _cart[index]['quantity'] = quantity;
+      _cart[index]['lineTotal'] = _cart[index]['price'] * quantity;
+      _calculateTotals();
+    });
+  }
+
+  void _calculateTotals() {
+    _subtotal = _cart.fold(0.0, (sum, item) => sum + (item['lineTotal'] as double));
+    _tax = _subtotal * _taxRate;
+    _total = _subtotal + _tax;
+  }
+
+  void _checkout() {
+    if (_cart.isEmpty) return;
+    _showCashPaymentDialog();
+  }
+
+  void _showCashPaymentDialog() {
+    double cashReceived = 0.0;
+    double change = 0.0;
+    final TextEditingController cashController = TextEditingController(text: '0.00');
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          void updateChange() {
+            cashReceived = double.tryParse(cashController.text.replaceAll(',', '')) ?? 0.0;
+            change = cashReceived - _total;
+            setState(() {});
+          }
+          
+          void addAmount(double amount) {
+            cashReceived = double.tryParse(cashController.text.replaceAll(',', '')) ?? 0.0;
+            cashReceived += amount;
+            cashController.text = cashReceived.toStringAsFixed(2);
+            updateChange();
+          }
+          
+          void setExactAmount() {
+            cashController.text = _total.toStringAsFixed(2);
+            updateChange();
+          }
+          
+          return Dialog(
+            backgroundColor: Colors.transparent,
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 400),
+              decoration: BoxDecoration(
+                color: const Color(0xFF4CAF50),
+                border: Border.all(color: Colors.black, width: 4),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Header
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'CASH PAYMENT',
+                          style: GoogleFonts.pressStart2p(
+                            fontSize: 12,
+                            color: Colors.white,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.black, width: 2),
+                          ),
+                          child: const Icon(Icons.money, color: Colors.green, size: 20),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Content
+                  Container(
+                    margin: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border.all(color: Colors.black, width: 3),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      children: [
+                        // Total Due
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'TOTAL DUE:',
+                              style: GoogleFonts.pressStart2p(fontSize: 10),
+                            ),
+                            Text(
+                              '₱${_total.toStringAsFixed(2)}',
+                              style: GoogleFonts.pressStart2p(
+                                fontSize: 12,
+                                color: const Color(0xFF4CAF50),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        // Cash Received Input
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'CASH RECEIVED',
+                              style: GoogleFonts.pressStart2p(fontSize: 8),
+                            ),
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                border: Border.all(color: Colors.black, width: 2),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                children: [
+                                  Text(
+                                    '₱',
+                                    style: GoogleFonts.pressStart2p(fontSize: 14),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: TextField(
+                                      controller: cashController,
+                                      keyboardType: TextInputType.number,
+                                      style: GoogleFonts.pressStart2p(fontSize: 16),
+                                      decoration: const InputDecoration(
+                                        border: InputBorder.none,
+                                        isDense: true,
+                                        contentPadding: EdgeInsets.zero,
+                                      ),
+                                      onChanged: (value) => updateChange(),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        // Change
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFDD835),
+                            border: Border.all(color: Colors.black, width: 2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'CHANGE:',
+                                style: GoogleFonts.pressStart2p(fontSize: 10),
+                              ),
+                              Text(
+                                '₱${change >= 0 ? change.toStringAsFixed(2) : '0.00'}',
+                                style: GoogleFonts.pressStart2p(
+                                  fontSize: 12,
+                                  color: const Color(0xFF4CAF50),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        // Quick Amount Buttons
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            _buildQuickAmountButton('+100', () => addAmount(100)),
+                            _buildQuickAmountButton('+200', () => addAmount(200)),
+                            _buildQuickAmountButton('+500', () => addAmount(500)),
+                            _buildQuickAmountButton('+1000', () => addAmount(1000)),
+                            _buildExactButton(setExactAmount),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Action Buttons
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () {
+                              cashController.dispose();
+                              Navigator.of(context).pop();
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFF44336),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                side: const BorderSide(color: Colors.black, width: 2),
+                              ),
+                            ),
+                            child: Text(
+                              'CANCEL',
+                              style: GoogleFonts.pressStart2p(
+                                fontSize: 10,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: change >= 0
+                                ? () {
+                                    cashController.dispose();
+                                    Navigator.of(context).pop();
+                                    _processCheckout('cash', cashReceived, change);
+                                  }
+                                : null,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              disabledBackgroundColor: Colors.grey[300],
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                side: const BorderSide(color: Colors.black, width: 2),
+                              ),
+                            ),
+                            child: Text(
+                              'COMPLETE',
+                              style: GoogleFonts.pressStart2p(
+                                fontSize: 10,
+                                color: change >= 0 ? const Color(0xFF4CAF50) : Colors.grey,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildQuickAmountButton(String label, VoidCallback onTap) {
+    return SizedBox(
+      width: 80,
+      child: ElevatedButton(
+        onPressed: onTap,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF4CAF50),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+            side: const BorderSide(color: Colors.black, width: 2),
+          ),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.pressStart2p(
+            fontSize: 9,
+            color: Colors.white,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExactButton(VoidCallback onTap) {
+    return SizedBox(
+      width: 80,
+      child: ElevatedButton(
+        onPressed: onTap,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFFFF9800),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+            side: const BorderSide(color: Colors.black, width: 2),
+          ),
+        ),
+        child: Text(
+          'EXACT',
+          style: GoogleFonts.pressStart2p(
+            fontSize: 9,
+            color: Colors.white,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPaymentMethodButton(String label, IconData icon, Color color, VoidCallback onTap) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: onTap,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color,
+          padding: const EdgeInsets.all(16),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: Colors.white),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: GoogleFonts.pressStart2p(fontSize: 12, color: Colors.white),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _processCheckout(String paymentMethod, double cashReceived, double change) async {
+    // TODO: Implement actual checkout process (save to database)
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'CHECKOUT COMPLETED!\nTotal: ₱${_total.toStringAsFixed(2)}\nCash: ₱${cashReceived.toStringAsFixed(2)}\nChange: ₱${change.toStringAsFixed(2)}',
+        ),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+    
+    setState(() {
+      _cart.clear();
+      _calculateTotals();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isDesktop = screenWidth >= 900;
+    final isTablet = screenWidth >= 600 && screenWidth < 900;
+    final isMobile = screenWidth < 600;
+    
+    // Calculate grid columns based on screen size
+    int crossAxisCount;
+    if (isDesktop) {
+      crossAxisCount = 4;
+    } else if (isTablet) {
+      crossAxisCount = 3;
+    } else {
+      crossAxisCount = 2;
+    }
+
+    return Scaffold(
+      body: isDesktop
+          ? Row(
+              children: [
+                // Product selection panel (desktop only)
+                Expanded(
+                  flex: 3,
+                  child: _buildProductGrid(crossAxisCount),
+                ),
+                // Cart panel (desktop only)
+                Expanded(
+                  flex: 1,
+                  child: _buildCartPanel(),
+                ),
+              ],
+            )
+          : _buildProductGrid(crossAxisCount),
+      floatingActionButton: isMobile || isTablet
+          ? _buildFloatingCartButton()
+          : null,
+    );
+  }
+
+  Widget _buildProductGrid(int crossAxisCount) {
+    return Column(
+      children: [
+        // Search bar
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: TextField(
+            controller: _searchController,
+            decoration: InputDecoration(
+              hintText: 'SEARCH PRODUCTS...',
+              hintStyle: GoogleFonts.pressStart2p(fontSize: 10),
+              prefixIcon: const Icon(Icons.search),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.black, width: 2),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.black, width: 2),
+              ),
+            ),
+            style: GoogleFonts.pressStart2p(fontSize: 10),
+          ),
+        ),
+        // Products grid
+        Expanded(
+          child: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : GridView.builder(
+                  padding: const EdgeInsets.all(16),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: crossAxisCount,
+                    childAspectRatio: 0.75,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                  ),
+                  itemCount: _filteredProducts.length,
+                  itemBuilder: (context, index) {
+                    final product = _filteredProducts[index];
+                    return _buildProductCard(product);
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProductCard(Map<String, dynamic> product) {
+    final name = product['name'] as String? ?? 'Unknown';
+    final price = double.tryParse(product['price']?.toString() ?? '0') ?? 0.0;
+    final photoUrl = product['photo_url'] as String?;
+    final variations = product['variations'] as List? ?? [];
+    
+    // Calculate total stock
+    int totalStock = 0;
+    for (var v in variations) {
+      totalStock += (v['quantity'] as num?)?.toInt() ?? 0;
+    }
+    
+    final isInStock = totalStock > 0;
+    final isMobile = MediaQuery.of(context).size.width < 600;
+    
+    return Card(
+      elevation: 6,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.zero,
+        side: BorderSide(
+          color: isInStock ? Colors.black : Colors.red,
+          width: 3,
+        ),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.zero,
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              isInStock ? const Color(0xFFF5F5F5) : const Color(0xFFFFF0F0),
+              isInStock ? const Color(0xFFE8E8E8) : const Color(0xFFFFE8E8),
+            ],
+          ),
+        ),
+        child: InkWell(
+          onTap: isInStock ? () => _addToCart(product) : null,
+          borderRadius: BorderRadius.zero,
+          child: Padding(
+            padding: EdgeInsets.all(isMobile ? 8.0 : 12.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Header with ITEM CARD text
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF2C3E50),
+                    border: Border(
+                      top: BorderSide(color: Colors.black, width: 2),
+                      left: BorderSide(color: Colors.black, width: 2),
+                      right: BorderSide(color: Colors.black, width: 2),
+                    ),
+                  ),
+                  child: Text(
+                    '─── ITEM CARD ─────',
+                    style: GoogleFonts.pressStart2p(
+                      fontSize: isMobile ? 7 : 8,
+                      color: const Color(0xFFECF0F1),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                
+                // Product image with icon overlay
+                Expanded(
+                  flex: 4,
+                  child: Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[200],
+                      border: Border.all(color: Colors.black, width: 2),
+                    ),
+                    child: Stack(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.zero,
+                          child: photoUrl != null && photoUrl.isNotEmpty
+                              ? Image.network(
+                                  photoUrl,
+                                  fit: BoxFit.cover,
+                                  width: double.infinity,
+                                  height: double.infinity,
+                                  loadingBuilder: (context, child, loadingProgress) {
+                                    if (loadingProgress == null) return child;
+                                    return Container(
+                                      width: double.infinity,
+                                      height: double.infinity,
+                                      color: Colors.grey[100],
+                                      child: Center(
+                                        child: SizedBox(
+                                          width: isMobile ? 16 : 20,
+                                          height: isMobile ? 16 : 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      width: double.infinity,
+                                      height: double.infinity,
+                                      color: Colors.grey[100],
+                                      child: Icon(
+                                        Icons.image,
+                                        size: isMobile ? 24 : 32,
+                                        color: Colors.grey[400],
+                                      ),
+                                    );
+                                  },
+                                )
+                              : Container(
+                                  width: double.infinity,
+                                  height: double.infinity,
+                                  color: Colors.grey[100],
+                                  child: Icon(
+                                    Icons.image,
+                                    size: isMobile ? 24 : 32,
+                                    color: Colors.grey[400],
+                                  ),
+                                ),
+                        ),
+                        // Pixel icon overlay
+                        Positioned(
+                          top: 4,
+                          left: 4,
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.black, width: 1),
+                            ),
+                            child: Text(
+                              '🖼️',
+                              style: TextStyle(fontSize: isMobile ? 10 : 12),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                
+                // Product name
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  child: Text(
+                    name.toUpperCase(),
+                    style: GoogleFonts.pressStart2p(
+                      fontSize: isMobile ? 7 : 8,
+                      color: Colors.black,
+                      height: 1.2,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                
+                // Divider line
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Container(
+                    height: 2,
+                    color: Colors.black,
+                  ),
+                ),
+                
+                // Price and stock info
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '💰',
+                            style: TextStyle(fontSize: isMobile ? 10 : 12),
+                          ),
+                          Text(
+                            '₱${price.toStringAsFixed(2)}',
+                            style: GoogleFonts.pressStart2p(
+                              fontSize: isMobile ? 9 : 10,
+                              color: const Color(0xFF27AE60),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '📦',
+                            style: TextStyle(fontSize: isMobile ? 10 : 12),
+                          ),
+                          Text(
+                            isInStock ? 'x$totalStock' : 'OUT',
+                            style: GoogleFonts.pressStart2p(
+                              fontSize: isMobile ? 8 : 9,
+                              color: isInStock ? const Color(0xFF2980B9) : Colors.red,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                
+                // Add button
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    decoration: BoxDecoration(
+                      color: isInStock ? const Color(0xFFE74C3C) : Colors.grey,
+                      border: Border.all(color: Colors.black, width: 2),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          '🛒',
+                          style: TextStyle(fontSize: isMobile ? 10 : 12),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          isInStock ? 'ADD' : 'SOLD OUT',
+                          style: GoogleFonts.pressStart2p(
+                            fontSize: isMobile ? 8 : 9,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFloatingCartButton() {
+    final isEmpty = _cart.isEmpty;
+    
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.orange,
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: Colors.black, width: 3),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.3),
+            offset: const Offset(2, 2),
+            blurRadius: 0,
+          ),
+        ],
+      ),
+      child: FloatingActionButton.extended(
+        onPressed: isEmpty ? null : _showCartBottomSheet,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        icon: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            const Icon(Icons.shopping_cart, color: Colors.white),
+            if (_cart.isNotEmpty)
+              Positioned(
+                right: -8,
+                top: -8,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.black, width: 2),
+                  ),
+                  child: Text(
+                    '${_cart.length}',
+                    style: GoogleFonts.pressStart2p(
+                      fontSize: 8,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+        label: Text(
+          '₱${_total.toStringAsFixed(0)}',
+          style: GoogleFonts.pressStart2p(
+            fontSize: 10,
+            color: Colors.white,
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showCartBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.7,
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            // Header
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'SHOPPING CART',
+                  style: GoogleFonts.pressStart2p(fontSize: 12),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+            const Divider(),
+            // Cart items
+            Expanded(
+              child: ListView.builder(
+                itemCount: _cart.length,
+                itemBuilder: (context, index) {
+                  final item = _cart[index];
+                  final product = item['product'] as Map<String, dynamic>;
+                  final variation = item['variation'] as Map<String, dynamic>;
+                  final quantity = item['quantity'] as int;
+                  final lineTotal = item['lineTotal'] as double;
+                  
+                  final name = product['name'] as String? ?? 'Unknown';
+                  final size = variation['size']?.toString() ?? 'N/A';
+                  final color = variation['color']?.toString() ?? 'N/A';
+
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            name,
+                            style: GoogleFonts.pressStart2p(fontSize: 10),
+                          ),
+                          Text(
+                            '$size / $color',
+                            style: GoogleFonts.pressStart2p(fontSize: 8, color: Colors.grey),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              // Quantity controls
+                              Row(
+                                children: [
+                                  IconButton(
+                                    onPressed: () => _updateQuantity(index, quantity - 1),
+                                    icon: const Icon(Icons.remove, size: 16),
+                                    padding: const EdgeInsets.all(4),
+                                  ),
+                                  Text(
+                                    '$quantity',
+                                    style: GoogleFonts.pressStart2p(fontSize: 10),
+                                  ),
+                                  IconButton(
+                                    onPressed: () => _updateQuantity(index, quantity + 1),
+                                    icon: const Icon(Icons.add, size: 16),
+                                    padding: const EdgeInsets.all(4),
+                                  ),
+                                ],
+                              ),
+                              // Price
+                              Text(
+                                '₱${lineTotal.toStringAsFixed(2)}',
+                                style: GoogleFonts.pressStart2p(fontSize: 10),
+                              ),
+                            ],
+                          ),
+                          // Remove button
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: () => _removeFromCart(index),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red,
+                              ),
+                              child: Text(
+                                'REMOVE',
+                                style: GoogleFonts.pressStart2p(fontSize: 8, color: Colors.white),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            // Totals and checkout
+            Column(
+              children: [
+                _buildTotalRow('Subtotal', _subtotal),
+                _buildTotalRow('Tax (8%)', _tax),
+                const Divider(),
+                _buildTotalRow('TOTAL', _total, isBold: true),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _checkout,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      padding: const EdgeInsets.all(16),
+                    ),
+                    child: Text(
+                      'CHECKOUT',
+                      style: GoogleFonts.pressStart2p(fontSize: 12, color: Colors.white),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCartPanel() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        border: Border(left: BorderSide(color: Colors.grey[300]!)),
+      ),
+      child: Column(
+        children: [
+          // Cart header
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
+            ),
+            child: Text(
+              'SHOPPING CART',
+              style: GoogleFonts.pressStart2p(fontSize: 12),
+            ),
+          ),
+          // Cart items
+          Expanded(
+            child: _cart.isEmpty
+                ? const Center(child: Text('Cart is empty'))
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _cart.length,
+                    itemBuilder: (context, index) {
+                      final item = _cart[index];
+                      final product = item['product'] as Map<String, dynamic>;
+                      final variation = item['variation'] as Map<String, dynamic>;
+                      final quantity = item['quantity'] as int;
+                      final lineTotal = item['lineTotal'] as double;
+                      
+                      final name = product['name'] as String? ?? 'Unknown';
+                      final size = variation['size']?.toString() ?? 'N/A';
+                      final color = variation['color']?.toString() ?? 'N/A';
+
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                name,
+                                style: GoogleFonts.pressStart2p(fontSize: 10),
+                              ),
+                              Text(
+                                '$size / $color',
+                                style: GoogleFonts.pressStart2p(fontSize: 8, color: Colors.grey),
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  // Quantity controls
+                                  Row(
+                                    children: [
+                                      IconButton(
+                                        onPressed: () => _updateQuantity(index, quantity - 1),
+                                        icon: const Icon(Icons.remove, size: 16),
+                                        padding: const EdgeInsets.all(4),
+                                      ),
+                                      Text(
+                                        '$quantity',
+                                        style: GoogleFonts.pressStart2p(fontSize: 10),
+                                      ),
+                                      IconButton(
+                                        onPressed: () => _updateQuantity(index, quantity + 1),
+                                        icon: const Icon(Icons.add, size: 16),
+                                        padding: const EdgeInsets.all(4),
+                                      ),
+                                    ],
+                                  ),
+                                  // Price
+                                  Text(
+                                    '₱${lineTotal.toStringAsFixed(2)}',
+                                    style: GoogleFonts.pressStart2p(fontSize: 10),
+                                  ),
+                                ],
+                              ),
+                              // Remove button
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton(
+                                  onPressed: () => _removeFromCart(index),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.red,
+                                  ),
+                                  child: Text(
+                                    'REMOVE',
+                                    style: GoogleFonts.pressStart2p(fontSize: 8, color: Colors.white),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+          // Totals and checkout
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border(top: BorderSide(color: Colors.grey[300]!)),
+            ),
+            child: Column(
+              children: [
+                _buildTotalRow('Subtotal', _subtotal),
+                _buildTotalRow('Tax (8%)', _tax),
+                const Divider(),
+                _buildTotalRow('TOTAL', _total, isBold: true),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _checkout,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      padding: const EdgeInsets.all(16),
+                    ),
+                    child: Text(
+                      'CHECKOUT',
+                      style: GoogleFonts.pressStart2p(fontSize: 12, color: Colors.white),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTotalRow(String label, double amount, {bool isBold = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: GoogleFonts.pressStart2p(
+              fontSize: 10,
+              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+          Text(
+            '₱${amount.toStringAsFixed(2)}',
+            style: GoogleFonts.pressStart2p(
+              fontSize: 10,
+              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
