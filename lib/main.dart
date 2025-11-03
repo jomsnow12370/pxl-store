@@ -415,7 +415,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          _index == 1 ? 'INVENTORY' : 'DASHBOARD',
+          _index == 1 ? 'INVENTORY' : _index == 3 ? 'CONFIG' : 'DASHBOARD',
           style: GoogleFonts.pressStart2p(fontSize: 14),
         ),
         actions: [
@@ -493,6 +493,14 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               label: 'POS',
             ),
+            BottomNavigationBarItem(
+              icon: Icon(
+                Icons.settings,
+                size: 24,
+                color: _index == 3 ? const Color(0xFF9E9E9E) : Colors.black,
+              ),
+              label: 'CONFIG',
+            ),
                       ],
         ),
       ),
@@ -507,6 +515,8 @@ class _HomeScreenState extends State<HomeScreen> {
         return _InventoryScreen(key: const ValueKey('inventory-screen'));
       case 2:
         return const POSScreen(key: ValueKey('pos-screen'));
+      case 3:
+        return const _ConfigScreen(key: ValueKey('config-screen'));
       default:
         return const SizedBox.shrink();
     }
@@ -941,6 +951,17 @@ class _ProductListState extends State<_ProductList> {
   final TextEditingController _searchController = TextEditingController();
   String _filterStatus = 'all'; // all, in_stock, low_stock, out_of_stock
 
+  int _getTotalStock() {
+    int totalStock = 0;
+    for (var product in _filteredProducts) {
+      final variations = (product['variations'] as List?) ?? [];
+      for (var v in variations) {
+        totalStock += (v['quantity'] as num?)?.toInt() ?? 0;
+      }
+    }
+    return totalStock;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -1173,7 +1194,7 @@ class _ProductListState extends State<_ProductList> {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
-                        '(${_filteredProducts.length}/50)',
+                        '(${_getTotalStock()})',
                         style: GoogleFonts.pressStart2p(
                           fontSize: 10,
                           color: const Color(0xFFECF0F1),
@@ -1207,8 +1228,8 @@ class _ProductListState extends State<_ProductList> {
                         child: GridView.builder(
                           padding: const EdgeInsets.all(16),
                           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 5,
-                            childAspectRatio: 0.8,
+                            crossAxisCount: 4,
+                            childAspectRatio: 0.7,
                             crossAxisSpacing: 12,
                             mainAxisSpacing: 12,
                           ),
@@ -1305,6 +1326,44 @@ class _InventoryItemCard extends StatelessWidget {
     return '📦'; // Default icon
   }
 
+  void _showDeleteDialog(BuildContext context, int id, String name) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('DELETE ITEM?', style: GoogleFonts.pressStart2p(fontSize: 12)),
+        content: Text(
+          'Are you sure you want to delete "$name"? This action cannot be undone.',
+          style: GoogleFonts.pressStart2p(fontSize: 10),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('CANCEL'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('DELETE'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await ApiService.deleteProduct(id);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('ITEM DELETED SUCCESSFULLY!')),
+        );
+        onUpdated(); // Refresh the list
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Delete failed: $e')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final name = product['name'] as String? ?? 'Unknown';
@@ -1325,58 +1384,365 @@ class _InventoryItemCard extends StatelessWidget {
         // Show item details dialog
         showDialog(
           context: context,
-          builder: (context) => AlertDialog(
-            title: Text(
-              name.toUpperCase(),
-              style: GoogleFonts.pressStart2p(fontSize: 12),
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (photoUrl != null && photoUrl.isNotEmpty)
+          builder: (context) => Dialog(
+            backgroundColor: Colors.white,
+            child: Container(
+              width: 400,
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.85,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Header
                   Container(
-                    height: 120,
                     width: double.infinity,
+                    padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      border: Border.all(color: Colors.black, width: 2),
+                      color: const Color(0xFF2C3E50),
+                      border: const Border(
+                        top: BorderSide(color: Colors.black, width: 3),
+                        left: BorderSide(color: Colors.black, width: 3),
+                        right: BorderSide(color: Colors.black, width: 3),
+                      ),
                     ),
-                    child: Image.network(
-                      photoUrl,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        color: Colors.grey[200],
-                        child: const Center(child: Icon(Icons.image)),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          name.toUpperCase(),
+                          style: GoogleFonts.pressStart2p(
+                            fontSize: 14,
+                            color: const Color(0xFFECF0F1),
+                          ),
+                        ),
+                        Text(
+                          itemIcon,
+                          style: const TextStyle(fontSize: 24),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Content (Scrollable)
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: const BoxDecoration(
+                          border: Border(
+                            left: BorderSide(color: Colors.black, width: 3),
+                            right: BorderSide(color: Colors.black, width: 3),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (photoUrl != null && photoUrl.isNotEmpty)
+                              Container(
+                                height: 200,
+                                width: double.infinity,
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: Colors.black, width: 2),
+                                ),
+                                child: ClipRRect(
+                                  child: Image.network(
+                                    photoUrl,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => Container(
+                                      color: Colors.grey[200],
+                                      child: const Center(
+                                        child: Icon(Icons.image, size: 48),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            if (photoUrl != null && photoUrl.isNotEmpty)
+                              const SizedBox(height: 16),
+                            // Price section
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF8F9FA),
+                                border: Border.all(color: Colors.black, width: 2),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '💰 PRICE',
+                                        style: GoogleFonts.pressStart2p(
+                                          fontSize: 10,
+                                          color: Colors.grey[600],
+                                        ),
+                                      ),
+                                      Text(
+                                        '₱${price.toStringAsFixed(2)}',
+                                        style: GoogleFonts.pressStart2p(
+                                          fontSize: 16,
+                                          color: const Color(0xFF27AE60),
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Text(
+                                        '📦 TOTAL',
+                                        style: GoogleFonts.pressStart2p(
+                                          fontSize: 10,
+                                          color: Colors.grey[600],
+                                        ),
+                                      ),
+                                      Text(
+                                        '$totalStock units',
+                                        style: GoogleFonts.pressStart2p(
+                                          fontSize: 12,
+                                          color: isInStock ? Colors.green : Colors.red,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            // Variations section
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    const Color(0xFF2C3E50),
+                                    const Color(0xFF34495E),
+                                  ],
+                                ),
+                                border: Border.all(color: Colors.black, width: 2),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Text(
+                                        '🎮 VARIATIONS',
+                                        style: GoogleFonts.pressStart2p(
+                                          fontSize: 10,
+                                          color: const Color(0xFFECF0F1),
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      const Spacer(),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF3498DB),
+                                          border: Border.all(color: Colors.black, width: 1),
+                                        ),
+                                        child: Text(
+                                          '${variations.length} types',
+                                          style: GoogleFonts.pressStart2p(
+                                            fontSize: 8,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Container(
+                                    height: 1,
+                                    color: const Color(0xFF7F8C8D),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  ...variations.map((v) {
+                                    final color = v['color'] as String? ?? '';
+                                    final size = v['size'] as String? ?? '';
+                                    final qty = (v['quantity'] as num?)?.toInt() ?? 0;
+                                    final isLow = qty > 0 && qty <= 5;
+                                    final isEmpty = qty == 0;
+                                    
+                                    return Padding(
+                                      padding: const EdgeInsets.only(bottom: 6),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          color: isEmpty 
+                                              ? const Color(0xFFE74C3C).withOpacity(0.2)
+                                              : isLow 
+                                                  ? const Color(0xFFF39C12).withOpacity(0.2)
+                                                  : const Color(0xFF27AE60).withOpacity(0.2),
+                                          border: Border.all(
+                                            color: isEmpty 
+                                                ? const Color(0xFFE74C3C)
+                                                : isLow 
+                                                    ? const Color(0xFFF39C12)
+                                                    : const Color(0xFF27AE60),
+                                            width: 2,
+                                          ),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            // Color badge
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                                              decoration: BoxDecoration(
+                                                color: Colors.white,
+                                                border: Border.all(color: Colors.black, width: 1),
+                                              ),
+                                              child: Text(
+                                                color.toUpperCase(),
+                                                style: GoogleFonts.pressStart2p(
+                                                  fontSize: 8,
+                                                  color: Colors.black,
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            // Size badge
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                                              decoration: BoxDecoration(
+                                                color: Colors.white,
+                                                border: Border.all(color: Colors.black, width: 1),
+                                              ),
+                                              child: Text(
+                                                size.toUpperCase(),
+                                                style: GoogleFonts.pressStart2p(
+                                                  fontSize: 8,
+                                                  color: Colors.black,
+                                                ),
+                                              ),
+                                            ),
+                                            const Spacer(),
+                                            // Stock indicator
+                                            Row(
+                                              children: [
+                                                Text(
+                                                  isEmpty ? '❌' : isLow ? '⚠️' : '✅',
+                                                  style: const TextStyle(fontSize: 12),
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  'x$qty',
+                                                  style: GoogleFonts.pressStart2p(
+                                                    fontSize: 10,
+                                                    color: isEmpty 
+                                                        ? const Color(0xFFE74C3C)
+                                                        : isLow 
+                                                            ? const Color(0xFFF39C12)
+                                                            : const Color(0xFF27AE60),
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                const SizedBox(height: 12),
-                Text(
-                  '💰 Price: ₱${price.toStringAsFixed(2)}',
-                  style: GoogleFonts.pressStart2p(fontSize: 10),
-                ),
-                Text(
-                  '📦 Stock: $totalStock',
-                  style: GoogleFonts.pressStart2p(
-                    fontSize: 10,
-                    color: isInStock ? Colors.green : Colors.red,
+                  // Actions
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: const BoxDecoration(
+                      border: Border(
+                        left: BorderSide(color: Colors.black, width: 3),
+                        right: BorderSide(color: Colors.black, width: 3),
+                        bottom: BorderSide(color: Colors.black, width: 3),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.grey,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.zero,
+                                side: const BorderSide(color: Colors.black, width: 2),
+                              ),
+                            ),
+                            child: Text(
+                              'CLOSE',
+                              style: GoogleFonts.pressStart2p(
+                                fontSize: 10,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                              // TODO: Add edit functionality
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF2196F3),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.zero,
+                                side: const BorderSide(color: Colors.black, width: 2),
+                              ),
+                            ),
+                            child: Text(
+                              'EDIT',
+                              style: GoogleFonts.pressStart2p(
+                                fontSize: 10,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                              _showDeleteDialog(context, product['id'] as int, name);
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFE74C3C),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.zero,
+                                side: const BorderSide(color: Colors.black, width: 2),
+                              ),
+                            ),
+                            child: Text(
+                              'DELETE',
+                              style: GoogleFonts.pressStart2p(
+                                fontSize: 10,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: Text('CLOSE', style: GoogleFonts.pressStart2p(fontSize: 10)),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  // TODO: Add edit functionality
-                },
-                child: Text('EDIT', style: GoogleFonts.pressStart2p(fontSize: 10)),
-              ),
-            ],
           ),
         );
       },
@@ -1403,7 +1769,7 @@ class _InventoryItemCard extends StatelessWidget {
               flex: 3,
               child: Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(4),
+                padding: const EdgeInsets.all(2),
                 decoration: const BoxDecoration(
                   border: Border(
                     bottom: BorderSide(color: Colors.black, width: 1),
@@ -1416,14 +1782,14 @@ class _InventoryItemCard extends StatelessWidget {
                         errorBuilder: (_, __, ___) => Center(
                           child: Text(
                             itemIcon,
-                            style: const TextStyle(fontSize: 24),
+                            style: const TextStyle(fontSize: 20),
                           ),
                         ),
                       )
                     : Center(
                         child: Text(
                           itemIcon,
-                          style: const TextStyle(fontSize: 24),
+                          style: const TextStyle(fontSize: 20),
                         ),
                       ),
               ),
@@ -1432,34 +1798,34 @@ class _InventoryItemCard extends StatelessWidget {
             Expanded(
               flex: 2,
               child: Padding(
-                padding: const EdgeInsets.all(4),
+                padding: const EdgeInsets.all(2),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      name.length > 8 
-                          ? '${name.substring(0, 6)}...'
+                      name.length > 7 
+                          ? '${name.substring(0, 5)}...'
                           : name,
                       style: GoogleFonts.pressStart2p(
-                        fontSize: 8,
+                        fontSize: 7,
                         color: Colors.black,
                       ),
                       textAlign: TextAlign.center,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 1),
                     Text(
                       'x$totalStock',
                       style: GoogleFonts.pressStart2p(
-                        fontSize: 7,
+                        fontSize: 6,
                         color: isInStock ? Colors.green : Colors.red,
                       ),
                     ),
                     Text(
                       '💰${price.toInt()}',
                       style: GoogleFonts.pressStart2p(
-                        fontSize: 7,
+                        fontSize: 6,
                         color: const Color(0xFF27AE60),
                         fontWeight: FontWeight.bold,
                       ),
@@ -2149,7 +2515,7 @@ class _InventoryFormState extends State<_InventoryForm> {
             ),
           ),
           _Section(
-            title: 'VARIATIONS (COLOR / SIZE / QTY)',
+            title: 'VARIATIONS',
             child: Column(
               children: [
                 for (int i = 0; i < _variations.length; i++)
@@ -2158,36 +2524,73 @@ class _InventoryFormState extends State<_InventoryForm> {
                     child: Row(
                       children: [
                         Expanded(
-                          flex: 2,
-                          child: TextField(
-                            controller: _variations[i].colorCtrl,
-                            decoration: const InputDecoration(labelText: 'COLOR'),
-                            textInputAction: TextInputAction.next,
+                          flex: 3,
+                          child: DropdownButtonFormField<String>(
+                            value: _variations[i].colorCtrl.text.isEmpty ? null : _variations[i].colorCtrl.text,
+                            decoration: const InputDecoration(
+                              labelText: 'COLOR',
+                              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                              isDense: true,
+                            ),
+                            isExpanded: true,
+                            items: ['Black', 'White', 'Red', 'Blue', 'Green', 'Yellow', 'Gray', 'Pink']
+                                .map((color) => DropdownMenuItem(
+                                      value: color,
+                                      child: Text(color, style: const TextStyle(fontSize: 14)),
+                                    ))
+                                .toList(),
+                            onChanged: (value) {
+                              if (value != null) {
+                                _variations[i].colorCtrl.text = value;
+                              }
+                            },
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 6),
                         Expanded(
                           flex: 2,
-                          child: TextField(
-                            controller: _variations[i].sizeCtrl,
-                            decoration: const InputDecoration(labelText: 'SIZE'),
-                            textInputAction: TextInputAction.next,
+                          child: DropdownButtonFormField<String>(
+                            value: _variations[i].sizeCtrl.text.isEmpty ? null : _variations[i].sizeCtrl.text,
+                            decoration: const InputDecoration(
+                              labelText: 'SIZE',
+                              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                              isDense: true,
+                            ),
+                            isExpanded: true,
+                            items: ['XS', 'S', 'M', 'L', 'XL', 'XXL', '30', '32', '34', '36']
+                                .map((size) => DropdownMenuItem(
+                                      value: size,
+                                      child: Text(size, style: const TextStyle(fontSize: 14)),
+                                    ))
+                                .toList(),
+                            onChanged: (value) {
+                              if (value != null) {
+                                _variations[i].sizeCtrl.text = value;
+                              }
+                            },
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 6),
                         Expanded(
                           flex: 2,
                           child: TextField(
                             controller: _variations[i].qtyCtrl,
-                            decoration: const InputDecoration(labelText: 'QTY'),
+                            decoration: const InputDecoration(
+                              labelText: 'QTY',
+                              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                              isDense: true,
+                            ),
                             keyboardType: TextInputType.number,
+                            style: const TextStyle(fontSize: 14),
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 4),
                         IconButton(
                           onPressed: () => _removeRow(i),
-                          icon: const Icon(Icons.remove_circle_outline),
+                          icon: const Icon(Icons.remove_circle_outline, size: 20),
                           tooltip: 'Remove',
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
                         ),
                       ],
                     ),
@@ -2269,9 +2672,7 @@ class _POSScreenState extends State<POSScreen> {
   List<dynamic> _filteredProducts = [];
   bool _isLoading = true;
   
-  final double _taxRate = 0.08;
   double _subtotal = 0.0;
-  double _tax = 0.0;
   double _total = 0.0;
 
   @override
@@ -2425,8 +2826,7 @@ class _POSScreenState extends State<POSScreen> {
 
   void _calculateTotals() {
     _subtotal = _cart.fold(0.0, (sum, item) => sum + (item['lineTotal'] as double));
-    _tax = _subtotal * _taxRate;
-    _total = _subtotal + _tax;
+    _total = _subtotal;
   }
 
   void _checkout() {
@@ -3281,7 +3681,6 @@ class _POSScreenState extends State<POSScreen> {
             Column(
               children: [
                 _buildTotalRow('Subtotal', _subtotal),
-                _buildTotalRow('Tax (8%)', _tax),
                 const Divider(),
                 _buildTotalRow('TOTAL', _total, isBold: true),
                 const SizedBox(height: 16),
@@ -3421,7 +3820,6 @@ class _POSScreenState extends State<POSScreen> {
             child: Column(
               children: [
                 _buildTotalRow('Subtotal', _subtotal),
-                _buildTotalRow('Tax (8%)', _tax),
                 const Divider(),
                 _buildTotalRow('TOTAL', _total, isBold: true),
                 const SizedBox(height: 16),
@@ -3465,6 +3863,348 @@ class _POSScreenState extends State<POSScreen> {
             style: GoogleFonts.pressStart2p(
               fontSize: 10,
               fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ConfigScreen extends StatefulWidget {
+  const _ConfigScreen({super.key});
+
+  @override
+  State<_ConfigScreen> createState() => _ConfigScreenState();
+}
+
+class _ConfigScreenState extends State<_ConfigScreen> {
+  List<String> _colors = [];
+  List<String> _sizes = [];
+  bool _isLoading = true;
+  String? _error;
+
+  final TextEditingController _colorController = TextEditingController();
+  final TextEditingController _sizeController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadConfiguration();
+  }
+
+  @override
+  void dispose() {
+    _colorController.dispose();
+    _sizeController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadConfiguration() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+
+      // TODO: Replace with actual API calls
+      // For now, use default values
+      setState(() {
+        _colors = ['Black', 'White', 'Red', 'Blue', 'Green', 'Yellow', 'Gray', 'Pink'];
+        _sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '30', '32', '34', '36'];
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _addColor() async {
+    final color = _colorController.text.trim();
+    if (color.isEmpty) return;
+
+    setState(() {
+      _colors.add(color);
+      _colorController.clear();
+    });
+
+    // TODO: Save to backend
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Color "$color" added!')),
+    );
+  }
+
+  Future<void> _removeColor(String color) async {
+    setState(() {
+      _colors.remove(color);
+    });
+
+    // TODO: Save to backend
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Color "$color" removed!')),
+    );
+  }
+
+  Future<void> _addSize() async {
+    final size = _sizeController.text.trim();
+    if (size.isEmpty) return;
+
+    setState(() {
+      _sizes.add(size);
+      _sizeController.clear();
+    });
+
+    // TODO: Save to backend
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Size "$size" added!')),
+    );
+  }
+
+  Future<void> _removeSize(String size) async {
+    setState(() {
+      _sizes.remove(size);
+    });
+
+    // TODO: Save to backend
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Size "$size" removed!')),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    if (_error != null) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'ERROR LOADING CONFIG',
+                style: GoogleFonts.pressStart2p(fontSize: 16, color: Colors.red),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                _error!,
+                style: GoogleFonts.pressStart2p(fontSize: 10),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _loadConfiguration,
+                child: Text('RETRY', style: GoogleFonts.pressStart2p(fontSize: 10)),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Scaffold(
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Colors Section
+            _Section(
+              title: 'COLOR OPTIONS',
+              child: Column(
+                children: [
+                  // Add new color
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _colorController,
+                          decoration: const InputDecoration(
+                            labelText: 'Add Color',
+                            hintText: 'e.g., Black, White, Red',
+                          ),
+                          textInputAction: TextInputAction.done,
+                          onSubmitted: (_) => _addColor(),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        onPressed: _addColor,
+                        child: Text('ADD', style: GoogleFonts.pressStart2p(fontSize: 10)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  // Colors list
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _colors.map((color) => _ColorChip(
+                      color: color,
+                      onDelete: () => _removeColor(color),
+                    )).toList(),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // Sizes Section
+            _Section(
+              title: 'SIZE OPTIONS',
+              child: Column(
+                children: [
+                  // Add new size
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _sizeController,
+                          decoration: const InputDecoration(
+                            labelText: 'Add Size',
+                            hintText: 'e.g., S, M, L, 30, 32',
+                          ),
+                          textInputAction: TextInputAction.done,
+                          onSubmitted: (_) => _addSize(),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        onPressed: _addSize,
+                        child: Text('ADD', style: GoogleFonts.pressStart2p(fontSize: 10)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  // Sizes list
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _sizes.map((size) => _SizeChip(
+                      size: size,
+                      onDelete: () => _removeSize(size),
+                    )).toList(),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // Info Section
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8F9FA),
+                border: Border.all(color: Colors.black, width: 2),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '📋 HOW TO USE',
+                    style: GoogleFonts.pressStart2p(fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '• Add colors and sizes that you commonly use\n'
+                    '• These options will appear as dropdowns in the Add Item form\n'
+                    '• This makes adding variations much faster and more consistent\n'
+                    '• Remove options that you no longer need',
+                    style: GoogleFonts.pressStart2p(fontSize: 10),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ColorChip extends StatelessWidget {
+  final String color;
+  final VoidCallback onDelete;
+
+  const _ColorChip({
+    required this.color,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE3F2FD),
+        border: Border.all(color: Colors.black, width: 2),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            color.toUpperCase(),
+            style: GoogleFonts.pressStart2p(fontSize: 10),
+          ),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: onDelete,
+            child: const Icon(
+              Icons.close,
+              size: 16,
+              color: Colors.red,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SizeChip extends StatelessWidget {
+  final String size;
+  final VoidCallback onDelete;
+
+  const _SizeChip({
+    required this.size,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF3E5F5),
+        border: Border.all(color: Colors.black, width: 2),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            size.toUpperCase(),
+            style: GoogleFonts.pressStart2p(fontSize: 10),
+          ),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: onDelete,
+            child: const Icon(
+              Icons.close,
+              size: 16,
+              color: Colors.red,
             ),
           ),
         ],
