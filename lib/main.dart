@@ -8,6 +8,153 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'services/api_service.dart';
 
+// ============================================================================
+// NEOBRUTALISM DESIGN SYSTEM
+// ============================================================================
+
+/// Typography scale for consistent text sizing across the app
+/// DRAMATIC NEOBRUTALISM - Bigger size differences for visual impact
+class NeoBrutalTypography {
+  // Display (Headings) - BIGGER for impact
+  static const double displayLarge = 20.0;   // Screen titles - BOLD
+  static const double displayMedium = 16.0;  // Section headers - PROMINENT
+  static const double displaySmall = 14.0;   // Card titles - CLEAR
+  
+  // Body (Content) - Readable but distinct
+  static const double bodyLarge = 12.0;      // Primary content
+  static const double bodyMedium = 11.0;     // Secondary content
+  static const double bodySmall = 10.0;      // Tertiary content
+  
+  // Label (UI Elements)
+  static const double labelLarge = 11.0;     // Button text - READABLE
+  static const double labelMedium = 10.0;    // Input labels
+  static const double labelSmall = 9.0;      // Badges, chips
+}
+
+/// Spacing system based on 8px grid for consistent layout
+class NeoSpacing {
+  static const double xxs = 4.0;   // Micro spacing
+  static const double xs = 8.0;    // Tight spacing
+  static const double sm = 12.0;   // Compact spacing
+  static const double md = 16.0;   // Default spacing
+  static const double lg = 24.0;   // Comfortable spacing
+  static const double xl = 32.0;   // Loose spacing
+  static const double xxl = 48.0;  // Section breaks
+  
+  // Standard padding
+  static const double cardPadding = 16.0;
+  static const double cardPaddingLarge = 20.0;
+  static const double screenPadding = 16.0;
+}
+
+/// Unified color palette for neobrutalism design
+/// DRAMATIC NEOBRUTALISM - Bolder, more saturated colors
+class NeoBrutalColors {
+  // Primary
+  static const Color primary = Color(0xFF000000);        // Pure Black - BOLD
+  static const Color accent = Color(0xFFFFD700);         // Gold Yellow - VIBRANT
+  
+  // Surfaces
+  static const Color surface = Color(0xFFF5F5F5);        // Light gray
+  static const Color surfaceCard = Color(0xFFFFFFFF);    // White cards
+  static const Color surfaceAlt = Color(0xFFE8E8E8);     // Alt background
+  
+  // Semantic Colors
+  static const Color success = Color(0xFF4CAF50);        // Green
+  static const Color successDark = Color(0xFF27AE60);    // Dark green
+  static const Color info = Color(0xFF2196F3);           // Blue
+  static const Color infoDark = Color(0xFF2980B9);       // Dark blue
+  static const Color warning = Color(0xFFFF9800);        // Orange
+  static const Color warningLight = Color(0xFFFFA726);   // Light orange
+  static const Color error = Color(0xFFE74C3C);          // Red
+  static const Color errorDark = Color(0xFFF44336);      // Dark red
+  
+  // Backgrounds (Semantic)
+  static const Color bgSuccess = Color(0xFFE8F5E9);      // Light green
+  static const Color bgInfo = Color(0xFFE3F2FD);         // Light blue
+  static const Color bgWarning = Color(0xFFFFF3E0);      // Light orange
+  static const Color bgError = Color(0xFFFFEBEE);        // Light red
+  static const Color bgNeutral = Color(0xFFF8F9FA);      // Light neutral
+  
+  // Borders
+  static const Color border = Color(0xFF000000);         // Black borders
+  static const Color borderSubtle = Color(0xFF9E9E9E);   // Gray borders
+  
+  // Text
+  static const Color textPrimary = Color(0xFF000000);    // Black text
+  static const Color textSecondary = Color(0xFF616161);  // Gray text
+  static const Color textTertiary = Color(0xFF9E9E9E);   // Light gray text
+}
+
+/// Component standards for neobrutalism design
+/// DRAMATIC NEOBRUTALISM - Thicker borders, larger shadows
+class NeoComponents {
+  // Border radius (Neobrutalism = sharp edges)
+  static const BorderRadius sharp = BorderRadius.zero;
+  static const BorderRadius slightRound = BorderRadius.all(Radius.circular(4));
+  static const BorderRadius dialogRound = BorderRadius.all(Radius.circular(12));
+  
+  // Border widths - THICKER for dramatic effect
+  static const double borderThick = 4.0;    // Primary borders - BOLD
+  static const double borderMedium = 3.0;   // Secondary borders - STRONG
+  static const double borderThin = 2.0;     // Subtle borders
+  
+  // Shadows (Neobrutalism hard shadows) - LARGER for depth
+  static BoxShadow shadowSmall = BoxShadow(
+    color: Colors.black.withOpacity(0.4),
+    offset: const Offset(6, 6),
+    blurRadius: 0,
+  );
+  
+  static BoxShadow shadowMedium = BoxShadow(
+    color: Colors.black.withOpacity(0.4),
+    offset: const Offset(8, 8),
+    blurRadius: 0,
+  );
+  
+  static BoxShadow shadowLarge = BoxShadow(
+    color: Colors.black.withOpacity(0.5),
+    offset: const Offset(10, 10),
+    blurRadius: 0,
+  );
+  
+  // Minimum touch target
+  static const double minTouchTarget = 44.0;
+  
+  // Button dimensions - BIGGER
+  static const double buttonHeight = 52.0;
+  static const EdgeInsets buttonPadding = EdgeInsets.symmetric(
+    horizontal: 24,
+    vertical: 16,
+  );
+  
+  // Input padding
+  static const EdgeInsets inputPadding = EdgeInsets.symmetric(
+    horizontal: 18,
+    vertical: 18,
+  );
+}
+
+/// Responsive breakpoints and utilities
+class NeoResponsive {
+  // Breakpoints
+  static const double mobile = 600;
+  static const double tablet = 900;
+  static const double desktop = 1200;
+  
+  // Grid columns
+  static int gridColumns(double width) {
+    if (width >= desktop) return 4;
+    if (width >= tablet) return 3;
+    return 2;
+  }
+  
+  // Check device type
+  static bool isMobile(double width) => width < mobile;
+  static bool isTablet(double width) => width >= mobile && width < desktop;
+  static bool isDesktop(double width) => width >= desktop;
+}
+
 void main() {
   runApp(const MyApp());
 }
@@ -18,90 +165,120 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final base = ThemeData(useMaterial3: true);
-    final pixelPrimary = const Color(0xFF111111);
-    final pixelAccent = const Color(0xFFF9D74B); // punchy yellow
-    final pixelSurface = const Color(0xFFF2F2F2);
-    final pixelShadow = const Color(0xFF000000);
 
     return MaterialApp(
       title: 'MRHY PXL Store',
       theme: base.copyWith(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: pixelAccent,
-          primary: pixelPrimary,
-          secondary: pixelAccent,
-          surface: pixelSurface,
-          background: pixelSurface,
+          seedColor: NeoBrutalColors.accent,
+          primary: NeoBrutalColors.primary,
+          secondary: NeoBrutalColors.accent,
+          surface: NeoBrutalColors.surface,
+          background: NeoBrutalColors.surface,
           brightness: Brightness.light,
         ),
         textTheme: GoogleFonts.pressStart2pTextTheme(base.textTheme).apply(
-          bodyColor: pixelPrimary,
-          displayColor: pixelPrimary,
+          bodyColor: NeoBrutalColors.textPrimary,
+          displayColor: NeoBrutalColors.textPrimary,
         ),
         appBarTheme: AppBarTheme(
-          backgroundColor: pixelAccent,
-          foregroundColor: pixelPrimary,
+          backgroundColor: NeoBrutalColors.accent,
+          foregroundColor: NeoBrutalColors.primary,
           elevation: 0,
           centerTitle: true,
+          shadowColor: Colors.black,
+          surfaceTintColor: Colors.transparent,
           titleTextStyle: GoogleFonts.pressStart2p(
-            fontSize: 16,
-            color: pixelPrimary,
+            fontSize: NeoBrutalTypography.displayMedium,
+            color: NeoBrutalColors.primary,
+            fontWeight: FontWeight.bold,
           ),
+          toolbarHeight: 64,
         ),
-        scaffoldBackgroundColor: pixelSurface,
+        scaffoldBackgroundColor: NeoBrutalColors.surface,
         cardTheme: CardThemeData(
-          color: Colors.white,
+          color: NeoBrutalColors.surfaceCard,
           elevation: 0,
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.zero,
-            side: BorderSide(width: 3, color: Colors.black),
+          shape: RoundedRectangleBorder(
+            borderRadius: NeoComponents.sharp,
+            side: BorderSide(
+              width: NeoComponents.borderThick,
+              color: NeoBrutalColors.border,
+            ),
           ),
-          shadowColor: pixelShadow,
+          shadowColor: NeoBrutalColors.border,
           margin: EdgeInsets.zero,
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            backgroundColor: pixelAccent,
-            foregroundColor: pixelPrimary,
+            backgroundColor: NeoBrutalColors.accent,
+            foregroundColor: NeoBrutalColors.primary,
             elevation: 0,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.zero,
-              side: BorderSide(width: 3, color: Colors.black),
+            padding: NeoComponents.buttonPadding,
+            minimumSize: Size(0, NeoComponents.buttonHeight),
+            shape: RoundedRectangleBorder(
+              borderRadius: NeoComponents.sharp,
+              side: BorderSide(
+                width: NeoComponents.borderThick,
+                color: NeoBrutalColors.border,
+              ),
             ),
-            textStyle: GoogleFonts.pressStart2p(fontSize: 12),
-            shadowColor: pixelShadow,
+            textStyle: GoogleFonts.pressStart2p(
+              fontSize: NeoBrutalTypography.labelLarge,
+            ),
           ),
         ),
         outlinedButtonTheme: OutlinedButtonThemeData(
           style: OutlinedButton.styleFrom(
-            foregroundColor: pixelPrimary,
-            side: const BorderSide(width: 3, color: Colors.black),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-            textStyle: GoogleFonts.pressStart2p(fontSize: 12),
-            shadowColor: pixelShadow,
+            foregroundColor: NeoBrutalColors.primary,
+            side: BorderSide(
+              width: NeoComponents.borderThick,
+              color: NeoBrutalColors.border,
+            ),
+            padding: NeoComponents.buttonPadding,
+            minimumSize: Size(0, NeoComponents.buttonHeight),
+            shape: RoundedRectangleBorder(
+              borderRadius: NeoComponents.sharp,
+            ),
+            textStyle: GoogleFonts.pressStart2p(
+              fontSize: NeoBrutalTypography.labelLarge,
+            ),
           ),
         ),
-        iconTheme: IconThemeData(color: pixelPrimary),
+        iconTheme: IconThemeData(color: NeoBrutalColors.primary),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-          border: const OutlineInputBorder(
-            borderRadius: BorderRadius.zero,
-            borderSide: BorderSide(width: 3, color: Colors.black),
+          fillColor: NeoBrutalColors.surfaceCard,
+          contentPadding: NeoComponents.inputPadding,
+          border: OutlineInputBorder(
+            borderRadius: NeoComponents.sharp,
+            borderSide: BorderSide(
+              width: NeoComponents.borderThick,
+              color: NeoBrutalColors.border,
+            ),
           ),
-          enabledBorder: const OutlineInputBorder(
-            borderRadius: BorderRadius.zero,
-            borderSide: BorderSide(width: 3, color: Colors.black),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: NeoComponents.sharp,
+            borderSide: BorderSide(
+              width: NeoComponents.borderThick,
+              color: NeoBrutalColors.border,
+            ),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.zero,
-            borderSide: BorderSide(width: 3, color: pixelAccent),
+            borderRadius: NeoComponents.sharp,
+            borderSide: BorderSide(
+              width: NeoComponents.borderThick,
+              color: NeoBrutalColors.accent,
+            ),
           ),
-          hintStyle: GoogleFonts.pressStart2p(fontSize: 10, color: Colors.black54),
-          labelStyle: GoogleFonts.pressStart2p(fontSize: 10, color: Colors.black87),
+          hintStyle: GoogleFonts.pressStart2p(
+            fontSize: NeoBrutalTypography.labelMedium,
+            color: NeoBrutalColors.textTertiary,
+          ),
+          labelStyle: GoogleFonts.pressStart2p(
+            fontSize: NeoBrutalTypography.labelMedium,
+            color: NeoBrutalColors.textSecondary,
+          ),
         ),
       ),
       home: const LoginScreen(),
@@ -186,35 +363,47 @@ class _LoginScreenState extends State<LoginScreen> {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 400),
             child: Padding(
-              padding: const EdgeInsets.all(24.0),
+              padding: const EdgeInsets.all(NeoSpacing.lg),
               child: Form(
                 key: _formKey,
                 child: Card(
                   child: Padding(
-                    padding: const EdgeInsets.all(24.0),
+                    padding: const EdgeInsets.all(NeoSpacing.cardPaddingLarge),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        // Bold title with accent background
+                        Container(
+                          padding: const EdgeInsets.all(NeoSpacing.md),
+                          decoration: BoxDecoration(
+                            color: NeoBrutalColors.accent,
+                            border: Border.all(
+                              color: NeoBrutalColors.border,
+                              width: NeoComponents.borderThick,
+                            ),
+                          ),
+                          child: Text(
+                            'MRHY PXL STORE',
+                            style: GoogleFonts.pressStart2p(
+                              fontSize: NeoBrutalTypography.displayLarge,
+                              color: NeoBrutalColors.primary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                        const SizedBox(height: NeoSpacing.md),
                         Text(
-                          'MRHY PXL STORE',
-                          style: GoogleFonts.pressStart2p(
-                            fontSize: 18,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
                           'INVENTORY MANAGEMENT',
-                          style: TextStyle(
-                            fontSize: 12,
+                          style: GoogleFonts.pressStart2p(
+                            fontSize: NeoBrutalTypography.bodyMedium,
+                            color: NeoBrutalColors.textSecondary,
                             letterSpacing: 2,
-                            fontWeight: FontWeight.w300,
                           ),
                           textAlign: TextAlign.center,
                         ),
-                        const SizedBox(height: 32),
+                        const SizedBox(height: NeoSpacing.xl),
                         TextFormField(
                           controller: _usernameController,
                           textInputAction: TextInputAction.next,
@@ -232,7 +421,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           },
                           onFieldSubmitted: (_) => _login(),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: NeoSpacing.md),
                         TextFormField(
                           controller: _passwordController,
                           obscureText: _obscure,
@@ -258,16 +447,19 @@ class _LoginScreenState extends State<LoginScreen> {
                           onFieldSubmitted: (_) => _login(),
                         ),
                         if (_errorMessage != null) ...{
-                          const SizedBox(height: 16),
+                          const SizedBox(height: NeoSpacing.md),
                           Text(
                             _errorMessage!,
-                            style: const TextStyle(color: Colors.red),
+                            style: GoogleFonts.pressStart2p(
+                              fontSize: NeoBrutalTypography.bodySmall,
+                              color: NeoBrutalColors.error,
+                            ),
                             textAlign: TextAlign.center,
                           ),
                         },
-                        const SizedBox(height: 24),
+                        const SizedBox(height: NeoSpacing.lg),
                         SizedBox(
-                          height: 50,
+                          height: NeoComponents.buttonHeight,
                           child: ElevatedButton(
                             onPressed: _isLoading ? null : _login,
                             child: _isLoading
@@ -413,18 +605,34 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          _index == 1 ? 'INVENTORY' : _index == 3 ? 'CONFIG' : 'DASHBOARD',
-          style: GoogleFonts.pressStart2p(fontSize: 14),
-        ),
-        actions: [
-          IconButton(
-            tooltip: 'Sign out',
-            icon: const Icon(Icons.logout),
-            onPressed: _logout,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(68),
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: NeoBrutalColors.border,
+                width: NeoComponents.borderThick,
+              ),
+            ),
           ),
-        ],
+          child: AppBar(
+            title: Text(
+              _index == 1 ? 'INVENTORY' : _index == 3 ? 'CONFIG' : 'DASHBOARD',
+              style: GoogleFonts.pressStart2p(
+                fontSize: NeoBrutalTypography.displayMedium,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            actions: [
+              IconButton(
+                tooltip: 'Sign out',
+                icon: const Icon(Icons.logout, size: 28),
+                onPressed: _logout,
+              ),
+            ],
+          ),
+        ),
       ),
       body: Center(
         child: ConstrainedBox(
@@ -449,7 +657,13 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: NeoBrutalColors.accent,
+          border: Border(
+            top: BorderSide(
+              color: NeoBrutalColors.border,
+              width: NeoComponents.borderThick,
+            ),
+          ),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.3),
@@ -460,14 +674,19 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         child: BottomNavigationBar(
           currentIndex: _index,
-          onTap: _onTabTapped,
+          onTap: (i) => setState(() => _index = i),
           type: BottomNavigationBarType.fixed,
           backgroundColor: Colors.transparent,
           elevation: 0,
-          selectedFontSize: 10,
-          unselectedFontSize: 10,
-          selectedItemColor: Colors.black,
-          unselectedItemColor: Colors.grey[700],
+          selectedLabelStyle: GoogleFonts.pressStart2p(
+            fontSize: NeoBrutalTypography.bodySmall,
+            fontWeight: FontWeight.bold,
+          ),
+          unselectedLabelStyle: GoogleFonts.pressStart2p(
+            fontSize: NeoBrutalTypography.bodySmall,
+          ),
+          selectedItemColor: NeoBrutalColors.primary,
+          unselectedItemColor: NeoBrutalColors.textSecondary,
           items: [
             BottomNavigationBarItem(
               icon: Icon(
@@ -762,66 +981,78 @@ class _DashboardScreenState extends State<_DashboardScreen> {
             // Welcome header
             Text(
               '📊 BUSINESS COMMAND CENTER',
-              style: GoogleFonts.pressStart2p(fontSize: 14, fontWeight: FontWeight.bold),
+              style: GoogleFonts.pressStart2p(
+                fontSize: NeoBrutalTypography.displayMedium,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: NeoSpacing.xs),
             Text(
               'Real-time analytics & insights',
-              style: GoogleFonts.pressStart2p(fontSize: 10, color: Colors.grey[600]),
+              style: GoogleFonts.pressStart2p(
+                fontSize: NeoBrutalTypography.bodyMedium,
+                color: NeoBrutalColors.textSecondary,
+              ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: NeoSpacing.lg),
 
             // Hero Stats - Today's Performance with Trends
             _buildHeroStatsCard(),
-            const SizedBox(height: 24),
+            const SizedBox(height: NeoSpacing.lg),
 
             // Financial Overview Card
             _buildFinancialOverviewCard(),
-            const SizedBox(height: 24),
+            const SizedBox(height: NeoSpacing.lg),
 
             // Inventory Alerts
             Text(
               '⚠️ INVENTORY STATUS',
-              style: GoogleFonts.pressStart2p(fontSize: 12, fontWeight: FontWeight.bold),
+              style: GoogleFonts.pressStart2p(
+                fontSize: NeoBrutalTypography.displaySmall,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: NeoSpacing.sm),
             Row(
               children: [
                 Expanded(
                   child: _AlertCard(
                     icon: Icons.warning_amber,
-                    iconColor: const Color(0xFFFFA726),
+                    iconColor: NeoBrutalColors.warning,
                     label: 'LOW STOCK',
                     value: _lowStockItems.toString(),
                     subtitle: '≤5 units',
-                    backgroundColor: const Color(0xFFFFF3E0),
+                    backgroundColor: NeoBrutalColors.warning,
                   ),
                 ),
-                const SizedBox(width: 24),
+                const SizedBox(width: NeoSpacing.md),
                 Expanded(
                   child: _AlertCard(
                     icon: Icons.error_outline,
-                    iconColor: const Color(0xFFE53935),
+                    iconColor: NeoBrutalColors.error,
                     label: 'OUT OF STOCK',
                     value: _outOfStockItems.toString(),
                     subtitle: '0 units',
-                    backgroundColor: const Color(0xFFFFEBEE),
+                    backgroundColor: NeoBrutalColors.error,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: NeoSpacing.lg),
 
             // Sales Chart
             _buildSalesChart(),
-            const SizedBox(height: 24),
+            const SizedBox(height: NeoSpacing.lg),
 
             // Recent Sales
             Text(
               '🧾 RECENT SALES',
-              style: GoogleFonts.pressStart2p(fontSize: 12, fontWeight: FontWeight.bold),
+              style: GoogleFonts.pressStart2p(
+                fontSize: NeoBrutalTypography.displaySmall,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: NeoSpacing.sm),
             if (_recentSales.isEmpty)
               Stack(
                 children: [
@@ -975,25 +1206,31 @@ class _DashboardScreenState extends State<_DashboardScreen> {
     
     return Stack(
       children: [
-        // Shadow
+        // DRAMATIC Shadow - larger offset
         Positioned(
-          top: 4,
-          left: 4,
-          right: -4,
-          bottom: -4,
+          top: 8,
+          left: 8,
+          right: -8,
+          bottom: -8,
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.3),
-              border: Border.all(color: Colors.black.withOpacity(0.3), width: 3),
+              color: Colors.black.withOpacity(0.5),
+              border: Border.all(
+                color: Colors.black.withOpacity(0.5),
+                width: NeoComponents.borderThick,
+              ),
             ),
           ),
         ),
-        // Main card
+        // Main card - BOLD accent color
         Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(NeoSpacing.lg),
           decoration: BoxDecoration(
-            color: const Color(0xFFE8F5E9),
-            border: Border.all(color: Colors.black, width: 3),
+            color: NeoBrutalColors.accent,
+            border: Border.all(
+              color: NeoBrutalColors.border,
+              width: NeoComponents.borderThick,
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1001,17 +1238,26 @@ class _DashboardScreenState extends State<_DashboardScreen> {
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(NeoSpacing.sm),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF4CAF50),
-                      border: Border.all(color: Colors.black, width: 2),
+                      color: NeoBrutalColors.primary,
+                      border: Border.all(
+                        color: NeoBrutalColors.border,
+                        width: NeoComponents.borderMedium,
+                      ),
                     ),
-                    child: const Icon(Icons.today, color: Colors.white, size: 24),
+                    child: const Icon(Icons.today, color: Colors.white, size: 32),
                   ),
-                  const SizedBox(width: 12),
-                  Text(
-                    "TODAY'S PERFORMANCE",
-                    style: GoogleFonts.pressStart2p(fontSize: 10, color: Colors.black),
+                  const SizedBox(width: NeoSpacing.md),
+                  Expanded(
+                    child: Text(
+                      "TODAY'S PERFORMANCE",
+                      style: GoogleFonts.pressStart2p(
+                        fontSize: NeoBrutalTypography.displaySmall,
+                        color: NeoBrutalColors.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -1024,23 +1270,33 @@ class _DashboardScreenState extends State<_DashboardScreen> {
                       children: [
                         Text(
                           'SALES',
-                          style: GoogleFonts.pressStart2p(fontSize: 8, color: Colors.black54),
+                          style: GoogleFonts.pressStart2p(
+                            fontSize: NeoBrutalTypography.bodyMedium,
+                            color: NeoBrutalColors.primary,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: NeoSpacing.sm),
                         Text(
                           '₱${_todaySales.toStringAsFixed(2)}',
                           style: GoogleFonts.pressStart2p(
-                            fontSize: 20,
+                            fontSize: 24.0,
                             fontWeight: FontWeight.bold,
-                            color: Colors.black,
+                            color: NeoBrutalColors.primary,
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: NeoSpacing.xs),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: NeoSpacing.xxs + 2,
+                            vertical: NeoSpacing.xxs,
+                          ),
                           decoration: BoxDecoration(
-                            color: isPositive ? const Color(0xFF4CAF50) : const Color(0xFFE53935),
-                            border: Border.all(color: Colors.black, width: 2),
+                            color: isPositive ? NeoBrutalColors.success : NeoBrutalColors.error,
+                            border: Border.all(
+                              color: NeoBrutalColors.border,
+                              width: NeoComponents.borderMedium,
+                            ),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -1050,10 +1306,13 @@ class _DashboardScreenState extends State<_DashboardScreen> {
                                 color: Colors.white,
                                 size: 12,
                               ),
-                              const SizedBox(width: 4),
+                              const SizedBox(width: NeoSpacing.xxs),
                               Text(
                                 '${salesChange.abs().toStringAsFixed(1)}%',
-                                style: GoogleFonts.pressStart2p(fontSize: 8, color: Colors.white),
+                                style: GoogleFonts.pressStart2p(
+                                  fontSize: NeoBrutalTypography.labelSmall,
+                                  color: NeoBrutalColors.surfaceCard,
+                                ),
                               ),
                             ],
                           ),
@@ -1440,25 +1699,31 @@ class _AlertCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        // Shadow
+        // DRAMATIC Shadow - larger
         Positioned(
-          top: 4,
-          left: 4,
-          right: -4,
-          bottom: -4,
+          top: 6,
+          left: 6,
+          right: -6,
+          bottom: -6,
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.3),
-              border: Border.all(color: Colors.black.withOpacity(0.3), width: 3),
+              color: Colors.black.withOpacity(0.5),
+              border: Border.all(
+                color: Colors.black.withOpacity(0.5),
+                width: NeoComponents.borderThick,
+              ),
             ),
           ),
         ),
-        // Main card
+        // Main card - BOLD colors
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(NeoSpacing.md),
           decoration: BoxDecoration(
             color: backgroundColor,
-            border: Border.all(color: Colors.black, width: 3),
+            border: Border.all(
+              color: NeoBrutalColors.border,
+              width: NeoComponents.borderThick,
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1466,18 +1731,25 @@ class _AlertCard extends StatelessWidget {
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(6),
+                    padding: const EdgeInsets.all(NeoSpacing.xs),
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border.all(color: Colors.black, width: 2),
+                      color: NeoBrutalColors.surfaceCard,
+                      border: Border.all(
+                        color: NeoBrutalColors.border,
+                        width: NeoComponents.borderMedium,
+                      ),
                     ),
-                    child: Icon(icon, color: iconColor, size: 20),
+                    child: Icon(icon, color: NeoBrutalColors.primary, size: 24),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: NeoSpacing.sm),
                   Expanded(
                     child: Text(
                       label,
-                      style: GoogleFonts.pressStart2p(fontSize: 8, color: Colors.black),
+                      style: GoogleFonts.pressStart2p(
+                        fontSize: NeoBrutalTypography.bodySmall,
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ],
@@ -1486,17 +1758,23 @@ class _AlertCard extends StatelessWidget {
               Text(
                 value,
                 style: GoogleFonts.pressStart2p(
-                  fontSize: 24,
+                  fontSize: 28,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black,
+                  color: Colors.white,
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: NeoSpacing.xs),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: NeoSpacing.xs,
+                  vertical: NeoSpacing.xxs,
+                ),
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  border: Border.all(color: Colors.black, width: 1),
+                  color: NeoBrutalColors.surfaceCard,
+                  border: Border.all(
+                    color: NeoBrutalColors.border,
+                    width: NeoComponents.borderThin,
+                  ),
                 ),
                 child: Text(
                   subtitle,
@@ -2665,96 +2943,143 @@ class _InventoryItemCard extends StatelessWidget {
           ),
         );
       },
-      child: Container(
-        decoration: BoxDecoration(
-          color: isInStock ? const Color(0xFFF5F5F5) : const Color(0xFFFFF0F0),
-          border: Border.all(
-            color: isInStock ? Colors.black : Colors.red,
-            width: 2,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              offset: const Offset(2, 2),
-              blurRadius: 0,
+      child: Stack(
+        children: [
+          // Shadow
+          Positioned(
+            top: 4,
+            left: 4,
+            right: -4,
+            bottom: -4,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.5),
+                border: Border.all(
+                  color: Colors.black.withOpacity(0.5),
+                  width: 3,
+                ),
+              ),
             ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            // Item icon or image
-            Expanded(
-              flex: 3,
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(2),
-                decoration: const BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(color: Colors.black, width: 1),
+          ),
+          // Main Card - POS Style
+          Container(
+            decoration: BoxDecoration(
+              color: !isInStock 
+                  ? const Color(0xFFE74C3C) 
+                  : totalStock <= 5 
+                      ? const Color(0xFFFF9800) 
+                      : const Color(0xFFFFD700),
+              border: Border.all(
+                color: Colors.black,
+                width: 3,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Header - Black with white text
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+                  decoration: const BoxDecoration(
+                    color: Colors.black,
+                    border: Border(
+                      bottom: BorderSide(color: Colors.black, width: 2),
+                    ),
+                  ),
+                  child: Text(
+                    name.toUpperCase(),
+                    style: GoogleFonts.pressStart2p(
+                      fontSize: 7,
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                child: photoUrl != null && photoUrl.isNotEmpty
-                    ? Image.network(
-                        photoUrl,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Center(
-                          child: Text(
-                            itemIcon,
-                            style: const TextStyle(fontSize: 20),
+                
+                // Product Image
+                Expanded(
+                  child: Container(
+                    margin: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border.all(color: Colors.black, width: 2),
+                    ),
+                    child: photoUrl != null && photoUrl.isNotEmpty
+                        ? Image.network(
+                            photoUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Center(
+                              child: Text(
+                                itemIcon,
+                                style: const TextStyle(fontSize: 24),
+                              ),
+                            ),
+                          )
+                        : Center(
+                            child: Text(
+                              itemIcon,
+                              style: const TextStyle(fontSize: 24),
+                            ),
                           ),
-                        ),
-                      )
-                    : Center(
-                        child: Text(
-                          itemIcon,
-                          style: const TextStyle(fontSize: 20),
-                        ),
-                      ),
-              ),
-            ),
-            // Item name
-            Expanded(
-              flex: 2,
-              child: Padding(
-                padding: const EdgeInsets.all(2),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      name.length > 7 
-                          ? '${name.substring(0, 5)}...'
-                          : name,
-                      style: GoogleFonts.pressStart2p(
-                        fontSize: 7,
-                        color: Colors.black,
-                      ),
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 1),
-                    Text(
-                      'x$totalStock',
-                      style: GoogleFonts.pressStart2p(
-                        fontSize: 6,
-                        color: isInStock ? Colors.green : Colors.red,
-                      ),
-                    ),
-                    Text(
-                      '💰${price.toInt()}',
-                      style: GoogleFonts.pressStart2p(
-                        fontSize: 6,
-                        color: const Color(0xFF27AE60),
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
+                
+                // Price & Stock Footer - Black background
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: const BoxDecoration(
+                    color: Colors.black,
+                    border: Border(
+                      top: BorderSide(color: Colors.black, width: 2),
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '💰',
+                            style: const TextStyle(fontSize: 10),
+                          ),
+                          Text(
+                            '₱${price.toInt()}',
+                            style: GoogleFonts.pressStart2p(
+                              fontSize: 8,
+                              color: const Color(0xFFFFD700),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '📦',
+                            style: const TextStyle(fontSize: 10),
+                          ),
+                          Text(
+                            'x$totalStock',
+                            style: GoogleFonts.pressStart2p(
+                              fontSize: 7,
+                              color: isInStock ? const Color(0xFF4CAF50) : const Color(0xFFE74C3C),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -2801,177 +3126,352 @@ class _ProductCard extends StatelessWidget {
 
     return Stack(
       children: [
+        // DRAMATIC Shadow
         Positioned(
           top: 8,
           left: 8,
-          right: 0,
-          bottom: 0,
-          child: Container(color: Colors.black),
+          right: -8,
+          bottom: -8,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.5),
+              border: Border.all(
+                color: Colors.black.withOpacity(0.5),
+                width: NeoComponents.borderThick,
+              ),
+            ),
+          ),
         ),
-        Card(
-          elevation: 6,
-          shadowColor: Colors.black.withOpacity(0.3),
-          child: Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+        // Main Card - POS Style
+        Container(
+          decoration: BoxDecoration(
+            color: isOutOfStock 
+                ? NeoBrutalColors.error 
+                : isLowStock 
+                    ? NeoBrutalColors.warning 
+                    : NeoBrutalColors.accent,
+            border: Border.all(
+              color: NeoBrutalColors.border,
+              width: NeoComponents.borderThick,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Header with product name - BOLD like POS
+              Container(
+                padding: const EdgeInsets.all(NeoSpacing.sm),
+                decoration: BoxDecoration(
+                  color: NeoBrutalColors.primary,
+                  border: Border(
+                    bottom: BorderSide(
+                      color: NeoBrutalColors.border,
+                      width: NeoComponents.borderMedium,
+                    ),
+                  ),
+                ),
+                child: Row(
                   children: [
-                    Container(
-                      height: 56,
-                      width: 56,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE0E0E0),
-                        border: Border.all(width: 3, color: Colors.black),
-                      ),
-                      child: product['photo_url'] != null
-                          ? Image.network(
-                              product['photo_url'] as String,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => const Icon(Icons.image, size: 20, color: Colors.black54),
-                            )
-                          : const Icon(Icons.image, size: 20, color: Colors.black54),
-                    ),
-                    const SizedBox(width: 12),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  name,
-                                  style: GoogleFonts.pressStart2p(fontSize: 11),
-                                ),
-                              ),
-                              if (isOutOfStock)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFF44336),
-                                    border: Border.all(width: 2, color: Colors.black),
-                                  ),
-                                  child: Text(
-                                    'OUT',
-                                    style: GoogleFonts.pressStart2p(fontSize: 8, color: Colors.white),
-                                  ),
-                                )
-                              else if (isLowStock)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFFF9800),
-                                    border: Border.all(width: 2, color: Colors.black),
-                                  ),
-                                  child: Text(
-                                    'LOW',
-                                    style: GoogleFonts.pressStart2p(fontSize: 8, color: Colors.white),
-                                  ),
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          if (variations.isEmpty)
-                            Text(
-                              'No variations',
-                              style: GoogleFonts.pressStart2p(fontSize: 9, color: Colors.black54),
-                            )
-                          else
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 6,
-                              children: variations.map<Widget>((v) {
-                                final color = v['color']?.toString() ?? '';
-                                final size = v['size']?.toString() ?? '';
-                                final qty = (v['quantity'] as num?)?.toInt() ?? 0;
-                                final chipBg = qty == 0 ? const Color(0xFFFFE1E1) : Colors.white;
-                                return Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                                  decoration: BoxDecoration(
-                                    color: chipBg,
-                                    border: Border.all(width: 3, color: Colors.black),
-                                  ),
-                                  child: Text(
-                                    '$size / $color • $qty',
-                                    style: GoogleFonts.pressStart2p(fontSize: 9),
-                                  ),
-                                );
-                              }).toList(),
-                            ),
-                        ],
+                      child: Text(
+                        name.toUpperCase(),
+                        style: GoogleFonts.pressStart2p(
+                          fontSize: NeoBrutalTypography.bodyMedium,
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        if (price != null)
-                          Text(
-                            _currency(price),
-                            style: GoogleFonts.pressStart2p(fontSize: 11),
-                          )
-                        else
-                          Text(
-                            'No price',
-                            style: GoogleFonts.pressStart2p(fontSize: 9, color: Colors.black54),
-                          ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Cost ${_currency(cost)}',
-                          style: GoogleFonts.pressStart2p(fontSize: 9, color: Colors.black87),
+                    if (isOutOfStock)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: NeoSpacing.xs,
+                          vertical: NeoSpacing.xxs,
                         ),
-                        if (profitMargin != null) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            '${profitMargin.toStringAsFixed(0)}% profit',
-                            style: GoogleFonts.pressStart2p(
-                              fontSize: 8,
-                              color: profitMargin > 0 ? const Color(0xFF4CAF50) : const Color(0xFFF44336),
-                            ),
+                        decoration: BoxDecoration(
+                          color: NeoBrutalColors.surfaceCard,
+                          border: Border.all(
+                            width: NeoComponents.borderThin,
+                            color: NeoBrutalColors.border,
                           ),
-                        ],
+                        ),
+                        child: Text(
+                          'OUT',
+                          style: GoogleFonts.pressStart2p(
+                            fontSize: NeoBrutalTypography.labelSmall,
+                            color: NeoBrutalColors.error,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      )
+                    else if (isLowStock)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: NeoSpacing.xs,
+                          vertical: NeoSpacing.xxs,
+                        ),
+                        decoration: BoxDecoration(
+                          color: NeoBrutalColors.surfaceCard,
+                          border: Border.all(
+                            width: NeoComponents.borderThin,
+                            color: NeoBrutalColors.border,
+                          ),
+                        ),
+                        child: Text(
+                          'LOW',
+                          style: GoogleFonts.pressStart2p(
+                            fontSize: NeoBrutalTypography.labelSmall,
+                            color: NeoBrutalColors.warning,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              
+              // Product Image - Larger like POS
+              Container(
+                height: 120,
+                margin: const EdgeInsets.all(NeoSpacing.sm),
+                decoration: BoxDecoration(
+                  color: NeoBrutalColors.surfaceCard,
+                  border: Border.all(
+                    width: NeoComponents.borderMedium,
+                    color: NeoBrutalColors.border,
+                  ),
+                ),
+                child: product['photo_url'] != null
+                    ? Image.network(
+                        product['photo_url'] as String,
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        errorBuilder: (_, __, ___) => const Center(
+                          child: Icon(Icons.image, size: 40, color: Colors.black26),
+                        ),
+                      )
+                    : const Center(
+                        child: Icon(Icons.image, size: 40, color: Colors.black26),
+                      ),
+              ),
+              
+              // Price & Info Section - Like POS
+              Container(
+                padding: const EdgeInsets.all(NeoSpacing.sm),
+                decoration: BoxDecoration(
+                  color: NeoBrutalColors.primary,
+                  border: Border(
+                    top: BorderSide(
+                      color: NeoBrutalColors.border,
+                      width: NeoComponents.borderMedium,
+                    ),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'PRICE',
+                          style: GoogleFonts.pressStart2p(
+                            fontSize: NeoBrutalTypography.labelSmall,
+                            color: NeoBrutalColors.accent,
+                          ),
+                        ),
+                        Text(
+                          price != null ? _currency(price) : 'No price',
+                          style: GoogleFonts.pressStart2p(
+                            fontSize: NeoBrutalTypography.bodyLarge,
+                            color: NeoBrutalColors.accent,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ],
                     ),
+                    const SizedBox(height: NeoSpacing.xs),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'COST',
+                          style: GoogleFonts.pressStart2p(
+                            fontSize: NeoBrutalTypography.labelSmall,
+                            color: Colors.white70,
+                          ),
+                        ),
+                        Text(
+                          _currency(cost),
+                          style: GoogleFonts.pressStart2p(
+                            fontSize: NeoBrutalTypography.bodySmall,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (profitMargin != null) ...[
+                      const SizedBox(height: NeoSpacing.xs),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'PROFIT',
+                            style: GoogleFonts.pressStart2p(
+                              fontSize: NeoBrutalTypography.labelSmall,
+                              color: Colors.white70,
+                            ),
+                          ),
+                          Text(
+                            '${profitMargin.toStringAsFixed(0)}%',
+                            style: GoogleFonts.pressStart2p(
+                              fontSize: NeoBrutalTypography.bodySmall,
+                              color: profitMargin > 0 ? NeoBrutalColors.success : NeoBrutalColors.error,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                    const SizedBox(height: NeoSpacing.xs),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: NeoSpacing.xs,
+                        vertical: NeoSpacing.xxs,
+                      ),
+                      decoration: BoxDecoration(
+                        color: NeoBrutalColors.surfaceCard,
+                        border: Border.all(
+                          color: NeoBrutalColors.border,
+                          width: NeoComponents.borderThin,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'STOCK',
+                            style: GoogleFonts.pressStart2p(
+                              fontSize: NeoBrutalTypography.labelSmall,
+                              color: NeoBrutalColors.primary,
+                            ),
+                          ),
+                          Text(
+                            '$totalStock units',
+                            style: GoogleFonts.pressStart2p(
+                              fontSize: NeoBrutalTypography.bodySmall,
+                              color: NeoBrutalColors.primary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
+              ),
+              
+              // Variations Section
+              if (variations.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.all(NeoSpacing.sm),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      top: BorderSide(
+                        color: NeoBrutalColors.border,
+                        width: NeoComponents.borderThin,
+                      ),
+                    ),
+                  ),
+                  child: Wrap(
+                    spacing: NeoSpacing.xs,
+                    runSpacing: NeoSpacing.xs,
+                    children: variations.map<Widget>((v) {
+                      final color = v['color']?.toString() ?? '';
+                      final size = v['size']?.toString() ?? '';
+                      final qty = (v['quantity'] as num?)?.toInt() ?? 0;
+                      return Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: NeoSpacing.xs,
+                          vertical: NeoSpacing.xxs,
+                        ),
+                        decoration: BoxDecoration(
+                          color: qty == 0 
+                              ? NeoBrutalColors.error 
+                              : NeoBrutalColors.surfaceCard,
+                          border: Border.all(
+                            width: NeoComponents.borderThin,
+                            color: NeoBrutalColors.border,
+                          ),
+                        ),
+                        child: Text(
+                          '$size/$color: $qty',
+                          style: GoogleFonts.pressStart2p(
+                            fontSize: NeoBrutalTypography.labelSmall,
+                            color: qty == 0 ? Colors.white : NeoBrutalColors.primary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              
+              // Action Buttons
+              Container(
+                padding: const EdgeInsets.all(NeoSpacing.sm),
+                decoration: BoxDecoration(
+                  border: Border(
+                    top: BorderSide(
+                      color: NeoBrutalColors.border,
+                      width: NeoComponents.borderThin,
+                    ),
+                  ),
+                ),
+                child: Row(
                   children: [
-                    Text(
-                      'Total Stock: $totalStock',
-                      style: GoogleFonts.pressStart2p(fontSize: 9, color: Colors.black87),
-                    ),
-                    const Spacer(),
-                    OutlinedButton.icon(
-                      onPressed: () => _showEditDialog(context, product, variations),
-                      icon: const Icon(Icons.edit, size: 16),
-                      label: const Text('EDIT'),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => _showEditDialog(context, product, variations),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: NeoBrutalColors.surfaceCard,
+                          foregroundColor: NeoBrutalColors.primary,
+                          padding: const EdgeInsets.symmetric(vertical: NeoSpacing.sm),
+                          shape: const RoundedRectangleBorder(),
+                        ),
+                        child: Text(
+                          'EDIT',
+                          style: GoogleFonts.pressStart2p(
+                            fontSize: NeoBrutalTypography.labelSmall,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    OutlinedButton.icon(
-                      onPressed: () => _showDeleteDialog(context, id, name),
-                      icon: const Icon(Icons.delete, size: 16, color: Colors.red),
-                      label: const Text('DELETE', style: TextStyle(color: Colors.red)),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        side: const BorderSide(color: Colors.red),
+                    const SizedBox(width: NeoSpacing.xs),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => _showDeleteDialog(context, id, name),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: NeoBrutalColors.error,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: NeoSpacing.sm),
+                          shape: const RoundedRectangleBorder(),
+                        ),
+                        child: Text(
+                          'DELETE',
+                          style: GoogleFonts.pressStart2p(
+                            fontSize: NeoBrutalTypography.labelSmall,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ],
@@ -3798,9 +4298,12 @@ class _POSScreenState extends State<POSScreen> {
             child: Container(
               constraints: const BoxConstraints(maxWidth: 400),
               decoration: BoxDecoration(
-                color: const Color(0xFF4CAF50),
-                border: Border.all(color: Colors.black, width: 4),
-                borderRadius: BorderRadius.circular(16),
+                color: NeoBrutalColors.success,
+                border: Border.all(
+                  color: NeoBrutalColors.border,
+                  width: NeoComponents.borderThick + 1,
+                ),
+                borderRadius: NeoComponents.sharp,
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -3832,12 +4335,15 @@ class _POSScreenState extends State<POSScreen> {
                   ),
                   // Content
                   Container(
-                    margin: const EdgeInsets.all(16),
-                    padding: const EdgeInsets.all(16),
+                    margin: const EdgeInsets.all(NeoSpacing.md),
+                    padding: const EdgeInsets.all(NeoSpacing.md),
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border.all(color: Colors.black, width: 3),
-                      borderRadius: BorderRadius.circular(12),
+                      color: NeoBrutalColors.surfaceCard,
+                      border: Border.all(
+                        color: NeoBrutalColors.border,
+                        width: NeoComponents.borderThick,
+                      ),
+                      borderRadius: NeoComponents.sharp,
                     ),
                     child: Column(
                       children: [
@@ -3869,11 +4375,17 @@ class _POSScreenState extends State<POSScreen> {
                             ),
                             const SizedBox(height: 8),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: NeoSpacing.sm,
+                                vertical: NeoSpacing.md,
+                              ),
                               decoration: BoxDecoration(
-                                color: Colors.white,
-                                border: Border.all(color: Colors.black, width: 2),
-                                borderRadius: BorderRadius.circular(8),
+                                color: NeoBrutalColors.surfaceCard,
+                                border: Border.all(
+                                  color: NeoBrutalColors.border,
+                                  width: NeoComponents.borderMedium,
+                                ),
+                                borderRadius: NeoComponents.sharp,
                               ),
                               child: Row(
                                 children: [
@@ -3903,11 +4415,14 @@ class _POSScreenState extends State<POSScreen> {
                         const SizedBox(height: 16),
                         // Change
                         Container(
-                          padding: const EdgeInsets.all(12),
+                          padding: const EdgeInsets.all(NeoSpacing.sm),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFDD835),
-                            border: Border.all(color: Colors.black, width: 2),
-                            borderRadius: BorderRadius.circular(8),
+                            color: NeoBrutalColors.accent,
+                            border: Border.all(
+                              color: NeoBrutalColors.border,
+                              width: NeoComponents.borderMedium,
+                            ),
+                            borderRadius: NeoComponents.sharp,
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -3954,11 +4469,14 @@ class _POSScreenState extends State<POSScreen> {
                               Navigator.of(context).pop();
                             },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFF44336),
-                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              backgroundColor: NeoBrutalColors.error,
+                              padding: const EdgeInsets.symmetric(vertical: NeoSpacing.md),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                side: const BorderSide(color: Colors.black, width: 2),
+                                borderRadius: NeoComponents.sharp,
+                                side: BorderSide(
+                                  color: NeoBrutalColors.border,
+                                  width: NeoComponents.borderMedium,
+                                ),
                               ),
                             ),
                             child: Text(
@@ -3981,12 +4499,15 @@ class _POSScreenState extends State<POSScreen> {
                                   }
                                 : null,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              disabledBackgroundColor: Colors.grey[300],
-                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              backgroundColor: NeoBrutalColors.surfaceCard,
+                              disabledBackgroundColor: NeoBrutalColors.surfaceAlt,
+                              padding: const EdgeInsets.symmetric(vertical: NeoSpacing.md),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                side: const BorderSide(color: Colors.black, width: 2),
+                                borderRadius: NeoComponents.sharp,
+                                side: BorderSide(
+                                  color: NeoBrutalColors.border,
+                                  width: NeoComponents.borderMedium,
+                                ),
                               ),
                             ),
                             child: Text(
@@ -4016,11 +4537,14 @@ class _POSScreenState extends State<POSScreen> {
       child: ElevatedButton(
         onPressed: onTap,
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF4CAF50),
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          backgroundColor: NeoBrutalColors.success,
+          padding: const EdgeInsets.symmetric(vertical: NeoSpacing.sm),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-            side: const BorderSide(color: Colors.black, width: 2),
+            borderRadius: NeoComponents.sharp,
+            side: BorderSide(
+              color: NeoBrutalColors.border,
+              width: NeoComponents.borderMedium,
+            ),
           ),
         ),
         child: Text(
@@ -4040,11 +4564,14 @@ class _POSScreenState extends State<POSScreen> {
       child: ElevatedButton(
         onPressed: onTap,
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFFFF9800),
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          backgroundColor: NeoBrutalColors.warning,
+          padding: const EdgeInsets.symmetric(vertical: NeoSpacing.sm),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-            side: const BorderSide(color: Colors.black, width: 2),
+            borderRadius: NeoComponents.sharp,
+            side: BorderSide(
+              color: NeoBrutalColors.border,
+              width: NeoComponents.borderMedium,
+            ),
           ),
         ),
         child: Text(
@@ -4093,11 +4620,14 @@ class _POSScreenState extends State<POSScreen> {
         barrierDismissible: false,
         builder: (context) => Center(
           child: Container(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(NeoSpacing.lg),
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.black, width: 3),
+              color: NeoBrutalColors.surfaceCard,
+              borderRadius: NeoComponents.sharp,
+              border: Border.all(
+                color: NeoBrutalColors.border,
+                width: NeoComponents.borderThick,
+              ),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -4281,15 +4811,23 @@ class _POSScreenState extends State<POSScreen> {
             controller: _searchController,
             decoration: InputDecoration(
               hintText: 'SEARCH ITEMS...',
-              hintStyle: GoogleFonts.pressStart2p(fontSize: 10),
+              hintStyle: GoogleFonts.pressStart2p(
+                fontSize: NeoBrutalTypography.bodyMedium,
+              ),
               prefixIcon: const Icon(Icons.search),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.black, width: 2),
+                borderRadius: NeoComponents.sharp,
+                borderSide: BorderSide(
+                  color: NeoBrutalColors.border,
+                  width: NeoComponents.borderMedium,
+                ),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.black, width: 2),
+                borderRadius: NeoComponents.sharp,
+                borderSide: BorderSide(
+                  color: NeoBrutalColors.accent,
+                  width: NeoComponents.borderThick,
+                ),
               ),
             ),
             style: GoogleFonts.pressStart2p(fontSize: 10),
@@ -4333,69 +4871,80 @@ class _POSScreenState extends State<POSScreen> {
     final isInStock = totalStock > 0;
     final isMobile = MediaQuery.of(context).size.width < 600;
     
-    return Card(
-      elevation: 6,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.zero,
-        side: BorderSide(
-          color: isInStock ? Colors.black : Colors.red,
-          width: 3,
-        ),
-      ),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.zero,
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              isInStock ? const Color(0xFFF5F5F5) : const Color(0xFFFFF0F0),
-              isInStock ? const Color(0xFFE8E8E8) : const Color(0xFFFFE8E8),
-            ],
+    return Stack(
+      children: [
+        // DRAMATIC Shadow
+        Positioned(
+          top: 6,
+          left: 6,
+          right: -6,
+          bottom: -6,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.5),
+              border: Border.all(
+                color: Colors.black.withOpacity(0.5),
+                width: NeoComponents.borderThick,
+              ),
+            ),
           ),
         ),
-        child: InkWell(
-          onTap: isInStock ? () => _addToCart(product) : null,
-          borderRadius: BorderRadius.zero,
-          child: Padding(
-            padding: EdgeInsets.all(isMobile ? 8.0 : 12.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Header with item name
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF2C3E50),
-                    border: Border(
-                      top: BorderSide(color: Colors.black, width: 2),
-                      left: BorderSide(color: Colors.black, width: 2),
-                      right: BorderSide(color: Colors.black, width: 2),
+        // Main Card
+        Container(
+          decoration: BoxDecoration(
+            color: isInStock ? NeoBrutalColors.accent : NeoBrutalColors.error,
+            border: Border.all(
+              color: NeoBrutalColors.border,
+              width: NeoComponents.borderThick,
+            ),
+          ),
+          child: InkWell(
+            onTap: isInStock ? () => _addToCart(product) : null,
+            child: Padding(
+              padding: EdgeInsets.all(isMobile ? NeoSpacing.xs : NeoSpacing.sm),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Header with item name - BOLD
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      vertical: NeoSpacing.xxs + 2,
+                      horizontal: NeoSpacing.xs,
+                    ),
+                    decoration: BoxDecoration(
+                      color: NeoBrutalColors.primary,
+                      border: Border.all(
+                        color: NeoBrutalColors.border,
+                        width: NeoComponents.borderMedium,
+                      ),
+                    ),
+                    child: Text(
+                      name.toUpperCase(),
+                      style: GoogleFonts.pressStart2p(
+                        fontSize: isMobile ? NeoBrutalTypography.bodySmall : NeoBrutalTypography.bodyMedium,
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  child: Text(
-                    name.toUpperCase(),
-                    style: GoogleFonts.pressStart2p(
-                      fontSize: isMobile ? 7 : 8,
-                      color: const Color(0xFFECF0F1),
-                    ),
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
                 
                 // Product image with icon overlay
                 Expanded(
                   flex: 4,
                   child: Container(
                     width: double.infinity,
-                    margin: const EdgeInsets.all(8),
+                    margin: const EdgeInsets.all(NeoSpacing.xs),
                     decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      border: Border.all(color: Colors.black, width: 2),
+                      color: NeoBrutalColors.surfaceCard,
+                      border: Border.all(
+                        color: NeoBrutalColors.border,
+                        width: NeoComponents.borderMedium,
+                      ),
                     ),
                     child: Padding(
                       padding: const EdgeInsets.all(4),
@@ -4483,9 +5032,16 @@ class _POSScreenState extends State<POSScreen> {
                   ),
                 ),
                 
-                // Price and stock info
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                // Price and stock info - BOLD
+                Container(
+                  padding: const EdgeInsets.all(NeoSpacing.xs),
+                  decoration: BoxDecoration(
+                    color: NeoBrutalColors.primary,
+                    border: Border.all(
+                      color: NeoBrutalColors.border,
+                      width: NeoComponents.borderMedium,
+                    ),
+                  ),
                   child: Column(
                     children: [
                       Row(
@@ -4493,13 +5049,13 @@ class _POSScreenState extends State<POSScreen> {
                         children: [
                           Text(
                             '💰',
-                            style: TextStyle(fontSize: isMobile ? 10 : 12),
+                            style: TextStyle(fontSize: isMobile ? 12 : 14),
                           ),
                           Text(
                             '₱${price.toStringAsFixed(2)}',
                             style: GoogleFonts.pressStart2p(
-                              fontSize: isMobile ? 9 : 10,
-                              color: const Color(0xFF27AE60),
+                              fontSize: isMobile ? NeoBrutalTypography.bodyMedium : NeoBrutalTypography.bodyLarge,
+                              color: NeoBrutalColors.accent,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -4556,11 +5112,12 @@ class _POSScreenState extends State<POSScreen> {
                     ),
                   ),
                 ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
-      ),
+      ],
     );
   }
 
@@ -4661,68 +5218,142 @@ class _POSScreenState extends State<POSScreen> {
                   final size = variation['size']?.toString() ?? 'N/A';
                   final color = variation['color']?.toString() ?? 'N/A';
 
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            name,
-                            style: GoogleFonts.pressStart2p(fontSize: 10),
-                          ),
-                          Text(
-                            '$size / $color',
-                            style: GoogleFonts.pressStart2p(fontSize: 8, color: Colors.grey),
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              // Quantity controls
-                              Row(
-                                children: [
-                                  IconButton(
-                                    onPressed: () => _updateQuantity(index, quantity - 1),
-                                    icon: const Icon(Icons.remove, size: 16),
-                                    padding: const EdgeInsets.all(4),
-                                  ),
-                                  Text(
-                                    '$quantity',
-                                    style: GoogleFonts.pressStart2p(fontSize: 10),
-                                  ),
-                                  IconButton(
-                                    onPressed: () => _updateQuantity(index, quantity + 1),
-                                    icon: const Icon(Icons.add, size: 16),
-                                    padding: const EdgeInsets.all(4),
-                                  ),
-                                ],
-                              ),
-                              // Price
-                              Text(
-                                '₱${lineTotal.toStringAsFixed(2)}',
-                                style: GoogleFonts.pressStart2p(fontSize: 10),
-                              ),
-                            ],
-                          ),
-                          // Remove button
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed: () => _removeFromCart(index),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.red,
-                              ),
-                              child: Text(
-                                'REMOVE',
-                                style: GoogleFonts.pressStart2p(fontSize: 8, color: Colors.white),
-                              ),
+                  return Stack(
+                    children: [
+                      // Shadow
+                      Positioned(
+                        top: 4,
+                        left: 4,
+                        right: -4,
+                        bottom: -4,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.4),
+                            border: Border.all(
+                              color: Colors.black.withOpacity(0.4),
+                              width: NeoComponents.borderMedium,
                             ),
                           ),
-                        ],
+                        ),
                       ),
-                    ),
+                      // Main card
+                      Container(
+                        margin: const EdgeInsets.only(bottom: NeoSpacing.sm),
+                        padding: const EdgeInsets.all(NeoSpacing.sm),
+                        decoration: BoxDecoration(
+                          color: NeoBrutalColors.accent,
+                          border: Border.all(
+                            color: NeoBrutalColors.border,
+                            width: NeoComponents.borderThick,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              name,
+                              style: GoogleFonts.pressStart2p(
+                                fontSize: NeoBrutalTypography.bodyMedium,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: NeoSpacing.xxs),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: NeoSpacing.xxs,
+                                vertical: NeoSpacing.xxs,
+                              ),
+                              decoration: BoxDecoration(
+                                color: NeoBrutalColors.primary,
+                                border: Border.all(
+                                  color: NeoBrutalColors.border,
+                                  width: NeoComponents.borderThin,
+                                ),
+                              ),
+                              child: Text(
+                                '$size / $color',
+                                style: GoogleFonts.pressStart2p(
+                                  fontSize: NeoBrutalTypography.labelSmall,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: NeoSpacing.sm),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                // Quantity controls
+                                Container(
+                                  decoration: BoxDecoration(
+                                    color: NeoBrutalColors.surfaceCard,
+                                    border: Border.all(
+                                      color: NeoBrutalColors.border,
+                                      width: NeoComponents.borderMedium,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      IconButton(
+                                        onPressed: () => _updateQuantity(index, quantity - 1),
+                                        icon: const Icon(Icons.remove, size: 18),
+                                        padding: const EdgeInsets.all(NeoSpacing.xxs),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: NeoSpacing.xs,
+                                        ),
+                                        child: Text(
+                                          '$quantity',
+                                          style: GoogleFonts.pressStart2p(
+                                            fontSize: NeoBrutalTypography.bodyMedium,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                      IconButton(
+                                        onPressed: () => _updateQuantity(index, quantity + 1),
+                                        icon: const Icon(Icons.add, size: 18),
+                                        padding: const EdgeInsets.all(NeoSpacing.xxs),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                // Price
+                                Text(
+                                  '₱${lineTotal.toStringAsFixed(2)}',
+                                  style: GoogleFonts.pressStart2p(
+                                    fontSize: NeoBrutalTypography.bodyLarge,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: NeoSpacing.xs),
+                            // Remove button
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: () => _removeFromCart(index),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: NeoBrutalColors.error,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: NeoSpacing.xs,
+                                  ),
+                                ),
+                                child: Text(
+                                  'REMOVE',
+                                  style: GoogleFonts.pressStart2p(
+                                    fontSize: NeoBrutalTypography.labelSmall,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   );
                 },
               ),
@@ -5119,14 +5750,20 @@ class _ConfigScreenState extends State<_ConfigScreen> with SingleTickerProviderS
         children: [
           Text(
             '👥 USER MANAGEMENT',
-            style: GoogleFonts.pressStart2p(fontSize: 14, fontWeight: FontWeight.bold),
+            style: GoogleFonts.pressStart2p(
+              fontSize: NeoBrutalTypography.displayMedium,
+              fontWeight: FontWeight.bold,
+            ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: NeoSpacing.xs),
           Text(
             'Manage system users and permissions',
-            style: GoogleFonts.pressStart2p(fontSize: 10, color: Colors.grey[600]),
+            style: GoogleFonts.pressStart2p(
+              fontSize: NeoBrutalTypography.bodyMedium,
+              color: NeoBrutalColors.textSecondary,
+            ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: NeoSpacing.lg),
           // TODO: Add user management UI
           Center(
             child: Column(
@@ -5159,14 +5796,20 @@ class _ConfigScreenState extends State<_ConfigScreen> with SingleTickerProviderS
         children: [
           Text(
             '📦 ITEM CONFIGURATION',
-            style: GoogleFonts.pressStart2p(fontSize: 14, fontWeight: FontWeight.bold),
+            style: GoogleFonts.pressStart2p(
+              fontSize: NeoBrutalTypography.displayMedium,
+              fontWeight: FontWeight.bold,
+            ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: NeoSpacing.xs),
           Text(
             'Configure variation options',
-            style: GoogleFonts.pressStart2p(fontSize: 10, color: Colors.grey[600]),
+            style: GoogleFonts.pressStart2p(
+              fontSize: NeoBrutalTypography.bodyMedium,
+              color: NeoBrutalColors.textSecondary,
+            ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: NeoSpacing.lg),
           // Colors Section
           _Section(
             title: 'COLOR OPTIONS',
@@ -5249,25 +5892,33 @@ class _ConfigScreenState extends State<_ConfigScreen> with SingleTickerProviderS
           const SizedBox(height: 24),
           // Info Section
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(NeoSpacing.md),
             decoration: BoxDecoration(
-              color: const Color(0xFFF8F9FA),
-              border: Border.all(color: Colors.black, width: 2),
+              color: NeoBrutalColors.bgNeutral,
+              border: Border.all(
+                color: NeoBrutalColors.border,
+                width: NeoComponents.borderMedium,
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   '📋 HOW TO USE',
-                  style: GoogleFonts.pressStart2p(fontSize: 12, fontWeight: FontWeight.bold),
+                  style: GoogleFonts.pressStart2p(
+                    fontSize: NeoBrutalTypography.displaySmall,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: NeoSpacing.xs),
                 Text(
                   '• Add colors and sizes that you commonly use\n'
                   '• These options will appear as dropdowns in the Add Item form\n'
                   '• This makes adding variations much faster and more consistent\n'
                   '• Remove options that you no longer need',
-                  style: GoogleFonts.pressStart2p(fontSize: 10),
+                  style: GoogleFonts.pressStart2p(
+                    fontSize: NeoBrutalTypography.bodyMedium,
+                  ),
                 ),
               ],
             ),
@@ -5292,26 +5943,34 @@ class _ColorChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(
+        horizontal: NeoSpacing.sm,
+        vertical: NeoSpacing.xs,
+      ),
       decoration: BoxDecoration(
-        color: const Color(0xFFE3F2FD),
-        border: Border.all(color: Colors.black, width: 2),
-        borderRadius: BorderRadius.circular(4),
+        color: NeoBrutalColors.bgInfo,
+        border: Border.all(
+          color: NeoBrutalColors.border,
+          width: NeoComponents.borderMedium,
+        ),
+        borderRadius: NeoComponents.sharp,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             color.toUpperCase(),
-            style: GoogleFonts.pressStart2p(fontSize: 10),
+            style: GoogleFonts.pressStart2p(
+              fontSize: NeoBrutalTypography.bodyMedium,
+            ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: NeoSpacing.xs),
           GestureDetector(
             onTap: onDelete,
-            child: const Icon(
+            child: Icon(
               Icons.close,
               size: 16,
-              color: Colors.red,
+              color: NeoBrutalColors.error,
             ),
           ),
         ],
@@ -5332,26 +5991,34 @@ class _SizeChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(
+        horizontal: NeoSpacing.sm,
+        vertical: NeoSpacing.xs,
+      ),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3E5F5),
-        border: Border.all(color: Colors.black, width: 2),
-        borderRadius: BorderRadius.circular(4),
+        color: NeoBrutalColors.bgWarning,
+        border: Border.all(
+          color: NeoBrutalColors.border,
+          width: NeoComponents.borderMedium,
+        ),
+        borderRadius: NeoComponents.sharp,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             size.toUpperCase(),
-            style: GoogleFonts.pressStart2p(fontSize: 10),
+            style: GoogleFonts.pressStart2p(
+              fontSize: NeoBrutalTypography.bodyMedium,
+            ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: NeoSpacing.xs),
           GestureDetector(
             onTap: onDelete,
-            child: const Icon(
+            child: Icon(
               Icons.close,
               size: 16,
-              color: Colors.red,
+              color: NeoBrutalColors.error,
             ),
           ),
         ],
